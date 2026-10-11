@@ -4,5 +4,6 @@
 ## Author: fontivan
 ## Version: 3.0.0
 ## X-Curse-Project-ID: 602729
+## SavedVariables: AutomaticGuildInteractionsDB
 
 automatic-guild-interactions.lua

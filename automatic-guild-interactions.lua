@@ -1,6 +1,9 @@
 
 -- luacheck: ignore _
 -- luacheck: ignore self
+-- luacheck: globals AutomaticGuildInteractionsDB Settings InterfaceOptions_AddCategory
+-- luacheck: globals CreateFrame GameFontNormalLarge GameFontHighlightSmall GameFontNormal
+-- luacheck: globals InputBoxTemplate UIPanelButtonTemplate
 
 -- Global table for storing everything
 -- luacheck: ignore UnitName
@@ -38,6 +41,40 @@ local AutoGuild = {
 	frame = {},
 	player_name = UnitName("player")
 };
+
+if type(AutomaticGuildInteractionsDB) ~= "table" then
+	AutomaticGuildInteractionsDB = {};
+end
+
+local function LoadSavedSettings()
+	local saved = AutomaticGuildInteractionsDB;
+
+	if type(saved.messages) == "table" then
+		for setting, value in pairs(saved.messages) do
+			if type(AutoGuild.messages[setting]) == "string" and type(value) == "string" then
+				AutoGuild.messages[setting] = value;
+			end
+		end
+	end
+
+	if type(saved.min_message_time) == "number" and saved.min_message_time >= 0 then
+		AutoGuild.rate_limit.min_message_time = saved.min_message_time;
+	end
+end
+
+local function SaveSettings()
+	AutomaticGuildInteractionsDB = {
+		messages = {
+			level_up = AutoGuild.messages.level_up,
+			welcome_back = AutoGuild.messages.welcome_back,
+			congratulations = AutoGuild.messages.congratulations,
+			welcome = AutoGuild.messages.welcome
+		},
+		min_message_time = AutoGuild.rate_limit.min_message_time
+	};
+end
+
+LoadSavedSettings();
 
 -- Rate limited function to send messages to chat channel
 function AutoGuild:SendMessage(message, channel)
@@ -218,3 +255,112 @@ AutoGuild.frame:SetScript("OnEvent", function (_, event, message, author)
 	end
 
 end);
+
+local optionsPanel = CreateFrame("Frame");
+optionsPanel.name = "Automatic Guild Interactions";
+
+local optionsTitle = optionsPanel:CreateFontString(nil, "ARTWORK", "GameFontNormalLarge");
+optionsTitle:SetPoint("TOPLEFT", 16, -16);
+optionsTitle:SetText(optionsPanel.name);
+
+local optionsDescription = optionsPanel:CreateFontString(nil, "ARTWORK", "GameFontHighlightSmall");
+optionsDescription:SetPoint("TOPLEFT", optionsTitle, "BOTTOMLEFT", 0, -8);
+optionsDescription:SetText("Customize the messages sent by the addon and the minimum time between messages.");
+
+local controls = {};
+local optionDefinitions = {
+	{ key = "welcome_back", label = "Welcome-back message" },
+	{ key = "welcome", label = "New guild member message" },
+	{ key = "level_up", label = "Level-up message" },
+	{ key = "congratulations", label = "Congratulations message" }
+};
+
+local function UpdateControlValues()
+	for _, definition in ipairs(optionDefinitions) do
+		controls[definition.key]:SetText(AutoGuild.messages[definition.key]);
+	end
+	controls.min_message_time:SetText(tostring(AutoGuild.rate_limit.min_message_time));
+end
+
+local function CreateTextOption(definition, yOffset)
+	local label = optionsPanel:CreateFontString(nil, "ARTWORK", "GameFontNormal");
+	label:SetPoint("TOPLEFT", 16, yOffset);
+	label:SetText(definition.label);
+
+	local editBox = CreateFrame("EditBox", nil, optionsPanel, "InputBoxTemplate");
+	editBox:SetSize(250, 24);
+	editBox:SetPoint("TOPLEFT", label, "BOTTOMLEFT", 0, -6);
+	editBox:SetAutoFocus(false);
+	editBox:SetScript("OnEnterPressed", function(self)
+		AutoGuild.messages[definition.key] = self:GetText();
+		SaveSettings();
+		self:ClearFocus();
+	end);
+	editBox:SetScript("OnEditFocusLost", function(self)
+		AutoGuild.messages[definition.key] = self:GetText();
+		SaveSettings();
+	end);
+	editBox:SetScript("OnEscapePressed", function(self)
+		self:SetText(AutoGuild.messages[definition.key]);
+		self:ClearFocus();
+	end);
+	controls[definition.key] = editBox;
+end
+
+for index, definition in ipairs(optionDefinitions) do
+	CreateTextOption(definition, -68 - ((index - 1) * 58));
+end
+
+local delayLabel = optionsPanel:CreateFontString(nil, "ARTWORK", "GameFontNormal");
+delayLabel:SetPoint("TOPLEFT", 16, -68 - (#optionDefinitions * 58));
+delayLabel:SetText("Minimum time between messages (seconds)");
+
+local delayEditBox = CreateFrame("EditBox", nil, optionsPanel, "InputBoxTemplate");
+delayEditBox:SetSize(100, 24);
+delayEditBox:SetPoint("TOPLEFT", delayLabel, "BOTTOMLEFT", 0, -6);
+delayEditBox:SetAutoFocus(false);
+delayEditBox:SetScript("OnEnterPressed", function(self)
+	local delay = tonumber(self:GetText());
+	if delay ~= nil and delay >= 0 then
+		AutoGuild.rate_limit.min_message_time = delay;
+		SaveSettings();
+	end
+	self:SetText(tostring(AutoGuild.rate_limit.min_message_time));
+	self:ClearFocus();
+end);
+delayEditBox:SetScript("OnEditFocusLost", function(self)
+	local delay = tonumber(self:GetText());
+	if delay ~= nil and delay >= 0 then
+		AutoGuild.rate_limit.min_message_time = delay;
+		SaveSettings();
+	end
+	self:SetText(tostring(AutoGuild.rate_limit.min_message_time));
+end);
+delayEditBox:SetScript("OnEscapePressed", function(self)
+	self:SetText(tostring(AutoGuild.rate_limit.min_message_time));
+	self:ClearFocus();
+end);
+controls.min_message_time = delayEditBox;
+
+local restoreDefaultsButton = CreateFrame("Button", nil, optionsPanel, "UIPanelButtonTemplate");
+restoreDefaultsButton:SetSize(150, 24);
+restoreDefaultsButton:SetPoint("TOPLEFT", delayEditBox, "BOTTOMLEFT", -6, -18);
+restoreDefaultsButton:SetText("Restore Defaults");
+restoreDefaultsButton:SetScript("OnClick", function()
+	AutoGuild.messages.welcome_back = "wb";
+	AutoGuild.messages.welcome = "welcome";
+	AutoGuild.messages.level_up = "ding";
+	AutoGuild.messages.congratulations = "grats";
+	AutoGuild.rate_limit.min_message_time = 10;
+	SaveSettings();
+	UpdateControlValues();
+end);
+
+optionsPanel:SetScript("OnShow", UpdateControlValues);
+
+if Settings and Settings.RegisterCanvasLayoutCategory then
+	local category = Settings.RegisterCanvasLayoutCategory(optionsPanel, optionsPanel.name);
+	Settings.RegisterAddOnCategory(category);
+elseif InterfaceOptions_AddCategory then
+	InterfaceOptions_AddCategory(optionsPanel);
+end
