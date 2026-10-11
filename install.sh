@@ -11,7 +11,7 @@ EOF
 }
 
 # The current directory
-DIR="$( cd "$( dirname "$0" )" && pwd )"
+DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 
 # The name of the addon
 ADDON_NAME="automatic-guild-interactions"
@@ -74,12 +74,14 @@ done
 # If the addon already exists then delete it
 if [[ -d "${INSTALL_DIR}" ]]; then
     echo "Cleaning existing addon"
-    rm -r "${INSTALL_DIR}"
+    rm -r -- "${INSTALL_DIR}"
 fi
 
 # Install the addon
 echo "Installing addon"
-mkdir -p "${INSTALL_DIR}"
+mkdir -p -- "${INSTALL_DIR}"
 for SOURCE_FILE in "${SOURCE_FILES[@]}"; do
-    cp "${SOURCE_FILE}" "${INSTALL_DIR}"
+    cp -- "${SOURCE_FILE}" "${INSTALL_DIR}/"
 done
+
+echo "Installed ${ADDON_NAME} to ${INSTALL_DIR}"
