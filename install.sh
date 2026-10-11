@@ -11,7 +11,7 @@ EOF
 }
 
 # The current directory
-DIR="$( cd "$( dirname "$0" )" && pwd )"
+DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 
 # The name of the addon
 ADDON_NAME="automatic-guild-interactions"
@@ -41,7 +41,8 @@ fi
 # The path to the WoW addon directory you want to install to
 WOW_ADDON_DIR="$1"
 if [[ ! -d "${WOW_ADDON_DIR}" ]]; then
-    echo "Error: WoW AddOns directory does not exist or is not a directory: ${WOW_ADDON_DIR}" >&2
+    echo "Error: WoW AddOns directory does not exist or is not a" \
+        "directory: ${WOW_ADDON_DIR}" >&2
     exit 2
 fi
 
@@ -71,15 +72,16 @@ for SOURCE_FILE in "${SOURCE_FILES[@]}"; do
 done
 
 # If the addon already exists then delete it
-if [[ -d "${INSTALL_DIR}" ]]
-then
+if [[ -d "${INSTALL_DIR}" ]]; then
     echo "Cleaning existing addon"
-    rm -r "${INSTALL_DIR}"
+    rm -r -- "${INSTALL_DIR}"
 fi
 
 # Install the addon
 echo "Installing addon"
-mkdir -p "${INSTALL_DIR}"
+mkdir -p -- "${INSTALL_DIR}"
 for SOURCE_FILE in "${SOURCE_FILES[@]}"; do
-    cp "${SOURCE_FILE}" "${INSTALL_DIR}"
+    cp -- "${SOURCE_FILE}" "${INSTALL_DIR}/"
 done
+
+echo "Installed ${ADDON_NAME} to ${INSTALL_DIR}"

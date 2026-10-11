@@ -30,4 +30,11 @@ luarocks install --local luacheck
 export PATH="$HOME/.luarocks/bin:$PATH"
 ```
 
-Run `make check` to validate Lua syntax, run Luacheck, execute the settings behavior checks, and check the Git diff for whitespace errors. Individual checks are available as `make syntax`, `make lint`, `make test`, and `make diff-check`.
+To create a Python virtual environment and install ShellCheck and bashate:
+
+```sh
+make venv
+make shell-lint
+```
+
+Run `make check` to validate Lua syntax, run Luacheck, execute the settings behavior checks, and check the Git diff for whitespace errors. Individual checks are available as `make syntax`, `make lint`, `make venv`, `make shell-lint`, `make test`, and `make diff-check`.
