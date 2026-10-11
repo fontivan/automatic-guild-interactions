@@ -1,0 +1,8 @@
+## Interface: 16001
+## Title: Automatic Guild Interactions
+## Notes: Automatically perform some simple guild interactions like welcoming members back and dinging.
+## Author: fontivan
+## Version: 2.0.1
+## X-Curse-Project-ID: 602729
+
+automatic-guild-interactions.lua

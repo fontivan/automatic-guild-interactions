@@ -30,7 +30,8 @@ cp "${LOCAL_ADDON_DIR}/${ADDON_NAME}.lua" "${INSTALL_DIR}"
 TOC_FILES=(
     "_Mainline"
     "_Vanilla"
-    "_Wrath"
+    "_Mists"
+    "_Forever"
 )
 
 for TOC_FILE_SUFFIX in ${TOC_FILES[@]}; do
