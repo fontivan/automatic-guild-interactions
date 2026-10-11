@@ -41,7 +41,8 @@ fi
 # The path to the WoW addon directory you want to install to
 WOW_ADDON_DIR="$1"
 if [[ ! -d "${WOW_ADDON_DIR}" ]]; then
-    echo "Error: WoW AddOns directory does not exist or is not a directory: ${WOW_ADDON_DIR}" >&2
+    echo "Error: WoW AddOns directory does not exist or is not a" \
+        "directory: ${WOW_ADDON_DIR}" >&2
     exit 2
 fi
 
@@ -71,8 +72,7 @@ for SOURCE_FILE in "${SOURCE_FILES[@]}"; do
 done
 
 # If the addon already exists then delete it
-if [[ -d "${INSTALL_DIR}" ]]
-then
+if [[ -d "${INSTALL_DIR}" ]]; then
     echo "Cleaning existing addon"
     rm -r "${INSTALL_DIR}"
 fi
