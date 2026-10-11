@@ -10,7 +10,7 @@ syntax:
 	$(LUAC) -p automatic-guild-interactions.lua tests/settings.lua
 
 lint:
-	$(LUACHECK) .
+	$(LUACHECK) automatic-guild-interactions.lua tests/settings.lua
 
 test:
 	$(LUA) tests/settings.lua
