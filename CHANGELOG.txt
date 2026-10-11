@@ -1,5 +1,9 @@
 v3.0.0
-- Prepare for upcoming changes and bump release version
+- Added saved per-account settings for the welcome, level-up, and congratulation messages
+- Added a configuration panel in Interface Options with a "Restore Defaults" button
+- Added a minimum delay setting to rate-limit guild chat messages
+- Added an installation script and updated the README with manual install and development instructions
+- Added a development Makefile with syntax, lint, test, and diff-check targets
 
 v2.0.1
 - Update interface versions for Retail 12.1, Classic Era 1.15.9, and Mists Classic 5.5.4
