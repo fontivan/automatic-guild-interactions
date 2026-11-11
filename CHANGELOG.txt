@@ -1,3 +1,6 @@
+v3.0.1
+- Fixed welcome-back messages for multi-part character names
+
 v3.0.0
 - Added saved per-account settings for the welcome, level-up, and congratulation messages
 - Added a configuration panel in Interface Options with a "Restore Defaults" button
