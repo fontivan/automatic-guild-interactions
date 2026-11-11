@@ -4,14 +4,12 @@
 -- luacheck: globals AutomaticGuildInteractionsDB Settings InterfaceOptions_AddCategory
 -- luacheck: globals CreateFrame GameFontNormalLarge GameFontHighlightSmall GameFontNormal
 -- luacheck: globals InputBoxTemplate UIPanelButtonTemplate
+-- luacheck: globals GuildRoster C_GuildInfo
 
 -- Global table for storing everything
 -- luacheck: ignore UnitName
 local AutoGuild = {
 	patterns = {
-		login = {
-			"has come online."
-		},
 		level = {
 			"^ding%p*$",
 			"^Ding%p*$",
@@ -36,11 +34,16 @@ local AutoGuild = {
 	subscription_events = {
 		"CHAT_MSG_SYSTEM",
 		"PLAYER_LEVEL_UP",
-		"CHAT_MSG_GUILD"
+		"CHAT_MSG_GUILD",
+		"PLAYER_LOGIN",
+		"GUILD_ROSTER_UPDATE"
 	},
 	frame = {},
 	player_name = UnitName("player")
 };
+
+local guildRosterReady = false;
+local pendingWelcomePlayers = {};
 
 if type(AutomaticGuildInteractionsDB) ~= "table" then
 	AutomaticGuildInteractionsDB = {};
@@ -151,33 +154,27 @@ function AutoGuild:StringSplit(input, sep)
 end
 
 -- Check if the player that logged in was a guildy, and if so, send a welcome message
-function AutoGuild:WelcomeBack(message)
+function AutoGuild:WelcomeBack(detected_player)
 
 	-- Fetch the number of players in the guild
 	-- luacheck: ignore GetNumGuildMembers
-	local player_count = GetNumGuildMembers();
-
-	-- Temp variable to store split results
-	local splits
-
-	-- Strip the player name of the person who just logged in
-	splits = AutoGuild.StringSplit(_, message);
-	local detected_player = splits[1];
+	local player_count = GetNumGuildMembers() or 0;
+	local detected_name, detected_realm = detected_player:match("^([^%-]+)%-?(.*)$");
 
 	-- Loop over the player indexes and see if any of them were the player that logged in
-	for i=1,player_count+1 do
+	for i=1,player_count do
 
 		-- Get the name of the guild member of that index position
 		-- luacheck: ignore GetGuildRosterInfo
-		splits = AutoGuild.StringSplit(_, GetGuildRosterInfo(i), "-");
-		local guild_member = splits[1];
+		local guild_member = GetGuildRosterInfo(i);
 
-		if guild_member == nil or guild_member == "" then
-			return;
+		-- Roster names may include a realm when the system notice does not.
+		local member_name, member_realm
+		if type(guild_member) == "string" then
+			member_name, member_realm = guild_member:match("^([^%-]+)%-?(.*)$");
 		end
-
-		-- If the person that just logged in is in our guild then welcome them back
-		if detected_player:match(guild_member) then
+		if member_name == detected_name
+			and (detected_realm == "" or member_realm == "" or detected_realm == member_realm) then
 			AutoGuild.SendMessage(_, AutoGuild.messages.welcome_back, AutoGuild.channels.guild);
 			return;
 		end
@@ -200,15 +197,41 @@ AutoGuild.frame:SetScript("OnEvent", function (_, event, message, author)
 		return;
 	end
 
+	if event == "PLAYER_LOGIN" then
+		if C_GuildInfo and C_GuildInfo.GuildRoster then
+			C_GuildInfo.GuildRoster();
+		elseif GuildRoster then
+			GuildRoster();
+		end
+		return;
+	end
+
+	if event == "GUILD_ROSTER_UPDATE" then
+		guildRosterReady = true;
+		for _, player in ipairs(pendingWelcomePlayers) do
+			AutoGuild.WelcomeBack(_, player);
+		end
+		pendingWelcomePlayers = {};
+		return;
+	end
+
 	-- Check if its a system message
 	if event == "CHAT_MSG_SYSTEM" then
 
 		-- Check if the message was a login message
-		for _, pattern in pairs(AutoGuild.patterns.login) do
-			if message:match(pattern) then
-				AutoGuild.WelcomeBack(_, message);
-				return;
+		local logged_in_player
+		if type(message) == "string" and message:match("has come online%.$") then
+			logged_in_player = message:match("|Hplayer:([^|]+)|h")
+				or message:match("^%[(.-)%] has come online%.$")
+				or message:match("^(.+) has come online%.$");
+		end
+		if logged_in_player then
+			if guildRosterReady then
+				AutoGuild.WelcomeBack(_, logged_in_player);
+			else
+				table.insert(pendingWelcomePlayers, logged_in_player);
 			end
+			return;
 		end
 
 		-- Check if the message was a join message

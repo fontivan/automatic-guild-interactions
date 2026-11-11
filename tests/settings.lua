@@ -1,10 +1,13 @@
 -- luacheck: globals AutomaticGuildInteractionsDB UnitName IsInGuild GetNumGuildMembers
--- luacheck: globals GetGuildRosterInfo SendChatMessage date time CreateFrame Settings
+-- luacheck: globals GetGuildRosterInfo GuildRoster SendChatMessage date time CreateFrame Settings
 -- luacheck: ignore self
 
 local sentMessages = {}
 local frames = {}
 local registeredCategory
+local guildMembers = {}
+local currentTime = 100
+local rosterRequested = false
 
 AutomaticGuildInteractionsDB = {
 	messages = {
@@ -22,11 +25,15 @@ function IsInGuild()
 end
 
 function GetNumGuildMembers()
-	return 0
+	return #guildMembers
 end
 
-function GetGuildRosterInfo()
-	return nil
+function GetGuildRosterInfo(index)
+	return guildMembers[index]
+end
+
+function GuildRoster()
+	rosterRequested = true
 end
 
 function SendChatMessage(message, channel)
@@ -38,7 +45,7 @@ function date()
 end
 
 function time()
-	return 100
+	return currentTime
 end
 
 local function CreateWidget()
@@ -142,4 +149,28 @@ assert(
 )
 assert(AutomaticGuildInteractionsDB.min_message_time == 10, "restore defaults did not reset rate limit")
 
-print("Settings, persistence, defaults, and level-up behavior passed")
+eventFrame.scripts.OnEvent(eventFrame, "PLAYER_LOGIN")
+assert(rosterRequested, "guild roster was not requested on login")
+eventFrame.scripts.OnEvent(
+	eventFrame,
+	"CHAT_MSG_SYSTEM",
+	"|Hplayer:First Last|h[First Last]|h has come online."
+)
+assert(#sentMessages == 1, "welcome-back message was sent before the roster was ready")
+
+guildMembers = { "First Last-Realm" }
+currentTime = 111
+eventFrame.scripts.OnEvent(eventFrame, "GUILD_ROSTER_UPDATE")
+assert(#sentMessages == 2, "multiword guild member was not welcomed after the roster update")
+assert(
+	sentMessages[2].message == "wb" and sentMessages[2].channel == "GUILD",
+	"welcome-back message behavior changed"
+)
+
+guildMembers = { "SingleName" }
+currentTime = 122
+eventFrame.scripts.OnEvent(eventFrame, "CHAT_MSG_SYSTEM", "SingleName has come online.")
+assert(#sentMessages == 3, "single-name guild member was not welcomed")
+assert(sentMessages[3].message == "wb", "single-name welcome-back message changed")
+
+print("Settings, persistence, defaults, single- and multiword login welcomes, and level-up behavior passed")
