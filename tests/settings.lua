@@ -13,7 +13,10 @@ AutomaticGuildInteractionsDB = {
 	messages = {
 		welcome_back = "saved welcome"
 	},
-	min_message_time = 22
+	min_message_time = 22,
+	features = {
+		congratulations = false
+	}
 }
 
 function UnitName()
@@ -68,6 +71,14 @@ local function CreateWidget()
 	function widget:SetAutoFocus()
 	end
 
+	function widget:SetChecked(checked)
+		self.checked = checked
+	end
+
+	function widget:GetChecked()
+		return self.checked
+	end
+
 	function widget:SetScript(event, callback)
 		self.scripts[event] = callback
 	end
@@ -109,13 +120,17 @@ dofile("automatic-guild-interactions.lua")
 assert(AutomaticGuildInteractionsDB.messages.welcome_back == "saved welcome", "saved message was not loaded")
 assert(AutomaticGuildInteractionsDB.min_message_time == 22, "saved rate limit was not loaded")
 assert(registeredCategory ~= nil, "modern options category was not registered")
+registeredCategory.panel.scripts.OnShow()
 
 local editBoxes = {}
+local featureButtons = {}
 local restoreDefaultsButton
 local eventFrame
 for _, frame in ipairs(frames) do
 	if frame.template == "InputBoxTemplate" then
 		table.insert(editBoxes, frame)
+	elseif frame.template == "UICheckButtonTemplate" then
+		table.insert(featureButtons, frame)
 	elseif frame.template == "UIPanelButtonTemplate" then
 		restoreDefaultsButton = frame
 	elseif frame.scripts.OnEvent ~= nil then
@@ -124,8 +139,35 @@ for _, frame in ipairs(frames) do
 end
 
 assert(#editBoxes == 5, "expected four message fields and one rate-limit field")
+assert(#featureButtons == 4, "expected one checkbox for each feature")
 assert(restoreDefaultsButton ~= nil, "restore-defaults button was not created")
 assert(eventFrame ~= nil, "event frame was not created")
+
+assert(featureButtons[1].checked, "features should be enabled by default")
+assert(not featureButtons[4].checked, "saved feature setting was not loaded")
+featureButtons[4]:SetChecked(true)
+featureButtons[4].scripts.OnClick(featureButtons[4])
+featureButtons[3]:SetChecked(false)
+featureButtons[3].scripts.OnClick(featureButtons[3])
+assert(AutomaticGuildInteractionsDB.features.level_up == false, "feature toggle was not persisted")
+eventFrame.scripts.OnEvent(eventFrame, "PLAYER_LEVEL_UP")
+assert(#sentMessages == 0, "disabled level-up feature sent a message")
+featureButtons[3]:SetChecked(true)
+featureButtons[3].scripts.OnClick(featureButtons[3])
+
+featureButtons[2]:SetChecked(false)
+featureButtons[2].scripts.OnClick(featureButtons[2])
+eventFrame.scripts.OnEvent(eventFrame, "CHAT_MSG_SYSTEM", "Other has joined the guild.", "Other")
+assert(#sentMessages == 0, "disabled new-member feature sent a message")
+featureButtons[2]:SetChecked(true)
+featureButtons[2].scripts.OnClick(featureButtons[2])
+
+featureButtons[4]:SetChecked(false)
+featureButtons[4].scripts.OnClick(featureButtons[4])
+eventFrame.scripts.OnEvent(eventFrame, "CHAT_MSG_GUILD", "ding", "Other")
+assert(#sentMessages == 0, "disabled congratulations feature sent a message")
+featureButtons[4]:SetChecked(true)
+featureButtons[4].scripts.OnClick(featureButtons[4])
 
 editBoxes[1]:SetText("custom welcome")
 editBoxes[1].scripts.OnEnterPressed(editBoxes[1])
@@ -148,6 +190,10 @@ assert(
 	"restore defaults did not reset congratulations message"
 )
 assert(AutomaticGuildInteractionsDB.min_message_time == 10, "restore defaults did not reset rate limit")
+assert(AutomaticGuildInteractionsDB.features.level_up, "restore defaults did not re-enable level-up")
+assert(AutomaticGuildInteractionsDB.features.welcome_back, "restore defaults did not re-enable welcome-back")
+assert(AutomaticGuildInteractionsDB.features.welcome, "restore defaults did not re-enable new-member welcomes")
+assert(AutomaticGuildInteractionsDB.features.congratulations, "restore defaults did not re-enable congratulations")
 
 eventFrame.scripts.OnEvent(eventFrame, "PLAYER_LOGIN")
 assert(rosterRequested, "guild roster was not requested on login")
@@ -173,4 +219,10 @@ eventFrame.scripts.OnEvent(eventFrame, "CHAT_MSG_SYSTEM", "SingleName has come o
 assert(#sentMessages == 3, "single-name guild member was not welcomed")
 assert(sentMessages[3].message == "wb", "single-name welcome-back message changed")
 
-print("Settings, persistence, defaults, single- and multiword login welcomes, and level-up behavior passed")
+featureButtons[1]:SetChecked(false)
+featureButtons[1].scripts.OnClick(featureButtons[1])
+currentTime = 133
+eventFrame.scripts.OnEvent(eventFrame, "CHAT_MSG_SYSTEM", "SingleName has come online.")
+assert(#sentMessages == 3, "disabled welcome-back feature sent a message")
+
+print("Settings, feature toggles, persistence, defaults, single- and multiword login welcomes, and level-up behavior passed")

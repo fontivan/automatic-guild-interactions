@@ -28,6 +28,12 @@ local AutoGuild = {
 		congratulations = "grats",
 		welcome = "welcome"
 	},
+	features = {
+		welcome_back = true,
+		welcome = true,
+		level_up = true,
+		congratulations = true
+	},
 	channels = {
 		guild = "GUILD"
 	},
@@ -63,6 +69,14 @@ local function LoadSavedSettings()
 	if type(saved.min_message_time) == "number" and saved.min_message_time >= 0 then
 		AutoGuild.rate_limit.min_message_time = saved.min_message_time;
 	end
+
+	if type(saved.features) == "table" then
+		for feature, enabled in pairs(saved.features) do
+			if type(AutoGuild.features[feature]) == "boolean" and type(enabled) == "boolean" then
+				AutoGuild.features[feature] = enabled;
+			end
+		end
+	end
 end
 
 local function SaveSettings()
@@ -73,7 +87,13 @@ local function SaveSettings()
 			congratulations = AutoGuild.messages.congratulations,
 			welcome = AutoGuild.messages.welcome
 		},
-		min_message_time = AutoGuild.rate_limit.min_message_time
+		min_message_time = AutoGuild.rate_limit.min_message_time,
+		features = {
+			welcome_back = AutoGuild.features.welcome_back,
+			welcome = AutoGuild.features.welcome,
+			level_up = AutoGuild.features.level_up,
+			congratulations = AutoGuild.features.congratulations
+		}
 	};
 end
 
@@ -155,6 +175,9 @@ end
 
 -- Check if the player that logged in was a guildy, and if so, send a welcome message
 function AutoGuild:WelcomeBack(detected_player)
+	if not AutoGuild.features.welcome_back then
+		return;
+	end
 
 	-- Fetch the number of players in the guild
 	-- luacheck: ignore GetNumGuildMembers
@@ -235,6 +258,9 @@ AutoGuild.frame:SetScript("OnEvent", function (_, event, message, author)
 		end
 
 		-- Check if the message was a join message
+		if not AutoGuild.features.welcome then
+			return;
+		end
 		for _, pattern in pairs(AutoGuild.patterns.guild_join) do
 
 			-- Don't check against our own messages
@@ -253,13 +279,18 @@ AutoGuild.frame:SetScript("OnEvent", function (_, event, message, author)
 
 	-- Check if its a level up
 	if event == "PLAYER_LEVEL_UP" then
-		AutoGuild.SendMessage(_, AutoGuild.messages.level_up, AutoGuild.channels.guild);
+		if AutoGuild.features.level_up then
+			AutoGuild.SendMessage(_, AutoGuild.messages.level_up, AutoGuild.channels.guild);
+		end
 		return;
 	-- end PLAYER_LEVEL_UP
 	end
 
 	-- Check if its a guild message
 	if event == "CHAT_MSG_GUILD" then
+		if not AutoGuild.features.congratulations then
+			return;
+		end
 
 		-- Don't check against our own messages
 		if author:match(AutoGuild.player_name) then
@@ -288,9 +319,15 @@ optionsTitle:SetText(optionsPanel.name);
 
 local optionsDescription = optionsPanel:CreateFontString(nil, "ARTWORK", "GameFontHighlightSmall");
 optionsDescription:SetPoint("TOPLEFT", optionsTitle, "BOTTOMLEFT", 0, -8);
-optionsDescription:SetText("Customize the messages sent by the addon and the minimum time between messages.");
+optionsDescription:SetText("Enable or disable features and customize messages and the minimum time between messages.");
 
 local controls = {};
+local featureDefinitions = {
+	{ key = "welcome_back", label = "Welcome-back message" },
+	{ key = "welcome", label = "New guild member message" },
+	{ key = "level_up", label = "Level-up message" },
+	{ key = "congratulations", label = "Congratulations message" }
+};
 local optionDefinitions = {
 	{ key = "welcome_back", label = "Welcome-back message" },
 	{ key = "welcome", label = "New guild member message" },
@@ -299,10 +336,29 @@ local optionDefinitions = {
 };
 
 local function UpdateControlValues()
+	for _, definition in ipairs(featureDefinitions) do
+		controls["feature_" .. definition.key]:SetChecked(AutoGuild.features[definition.key]);
+	end
 	for _, definition in ipairs(optionDefinitions) do
 		controls[definition.key]:SetText(AutoGuild.messages[definition.key]);
 	end
 	controls.min_message_time:SetText(tostring(AutoGuild.rate_limit.min_message_time));
+end
+
+local function CreateFeatureOption(definition, yOffset)
+	local checkButton = CreateFrame("CheckButton", nil, optionsPanel, "UICheckButtonTemplate");
+	checkButton:SetSize(24, 24);
+	checkButton:SetPoint("TOPLEFT", 16, yOffset);
+
+	local label = optionsPanel:CreateFontString(nil, "ARTWORK", "GameFontNormal");
+	label:SetPoint("LEFT", checkButton, "RIGHT", 4, 0);
+	label:SetText(definition.label);
+
+	checkButton:SetScript("OnClick", function(self)
+		AutoGuild.features[definition.key] = self:GetChecked();
+		SaveSettings();
+	end);
+	controls["feature_" .. definition.key] = checkButton;
 end
 
 local function CreateTextOption(definition, yOffset)
@@ -330,12 +386,16 @@ local function CreateTextOption(definition, yOffset)
 	controls[definition.key] = editBox;
 end
 
+for index, definition in ipairs(featureDefinitions) do
+	CreateFeatureOption(definition, -60 - ((index - 1) * 28));
+end
+
 for index, definition in ipairs(optionDefinitions) do
-	CreateTextOption(definition, -68 - ((index - 1) * 58));
+	CreateTextOption(definition, -180 - ((index - 1) * 58));
 end
 
 local delayLabel = optionsPanel:CreateFontString(nil, "ARTWORK", "GameFontNormal");
-delayLabel:SetPoint("TOPLEFT", 16, -68 - (#optionDefinitions * 58));
+delayLabel:SetPoint("TOPLEFT", 16, -180 - (#optionDefinitions * 58));
 delayLabel:SetText("Minimum time between messages (seconds)");
 
 local delayEditBox = CreateFrame("EditBox", nil, optionsPanel, "InputBoxTemplate");
@@ -375,6 +435,9 @@ restoreDefaultsButton:SetScript("OnClick", function()
 	AutoGuild.messages.level_up = "ding";
 	AutoGuild.messages.congratulations = "grats";
 	AutoGuild.rate_limit.min_message_time = 10;
+	for _, definition in ipairs(featureDefinitions) do
+		AutoGuild.features[definition.key] = true;
+	end
 	SaveSettings();
 	UpdateControlValues();
 end);
