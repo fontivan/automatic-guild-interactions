@@ -84,7 +84,10 @@ local function CreateWidget()
 	end
 
 	function widget:GetChecked()
-		return self.checked
+		if self.checked then
+			return 1
+		end
+		return nil
 	end
 
 	function widget:SetScript(event, callback)

@@ -367,7 +367,8 @@ local function CreateFeatureOption(definition, yOffset)
 	label:SetText(definition.label);
 
 	checkButton:SetScript("OnClick", function(self)
-		AutoGuild.features[definition.key] = self:GetChecked();
+		local checked = self:GetChecked();
+		AutoGuild.features[definition.key] = checked == true or checked == 1;
 		SaveSettings();
 	end);
 	controls["feature_" .. definition.key] = checkButton;
