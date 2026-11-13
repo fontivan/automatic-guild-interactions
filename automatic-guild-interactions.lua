@@ -383,6 +383,14 @@ local function CreateTextOption(definition, yOffset)
 	editBox:SetSize(250, 24);
 	editBox:SetPoint("TOPLEFT", label, "BOTTOMLEFT", 0, -6);
 	editBox:SetAutoFocus(false);
+	local originalMessage = AutoGuild.messages[definition.key];
+	editBox:SetScript("OnEditFocusGained", function()
+		originalMessage = AutoGuild.messages[definition.key];
+	end);
+	editBox:SetScript("OnTextChanged", function(self)
+		AutoGuild.messages[definition.key] = self:GetText();
+		SaveSettings();
+	end);
 	editBox:SetScript("OnEnterPressed", function(self)
 		AutoGuild.messages[definition.key] = self:GetText();
 		SaveSettings();
@@ -393,7 +401,9 @@ local function CreateTextOption(definition, yOffset)
 		SaveSettings();
 	end);
 	editBox:SetScript("OnEscapePressed", function(self)
-		self:SetText(AutoGuild.messages[definition.key]);
+		AutoGuild.messages[definition.key] = originalMessage;
+		self:SetText(originalMessage);
+		SaveSettings();
 		self:ClearFocus();
 	end);
 	controls[definition.key] = editBox;

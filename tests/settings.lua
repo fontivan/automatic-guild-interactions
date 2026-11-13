@@ -67,6 +67,9 @@ local function CreateWidget()
 
 	function widget:SetText(text)
 		self.text = text
+		if self.scripts.OnTextChanged ~= nil then
+			self.scripts.OnTextChanged(self)
+		end
 	end
 
 	function widget:GetText()
@@ -188,9 +191,15 @@ assert(#sentMessages == 0, "disabled congratulations feature sent a message")
 featureButtons[4]:SetChecked(true)
 featureButtons[4].scripts.OnClick(featureButtons[4])
 
+editBoxes[1].scripts.OnEditFocusGained(editBoxes[1])
 editBoxes[1]:SetText("custom welcome")
+assert(AutomaticGuildInteractionsDB.messages.welcome_back == "custom welcome", "message edit was not saved immediately")
 editBoxes[1].scripts.OnEnterPressed(editBoxes[1])
 assert(AutomaticGuildInteractionsDB.messages.welcome_back == "custom welcome", "message edit was not persisted")
+editBoxes[1].scripts.OnEditFocusGained(editBoxes[1])
+editBoxes[1]:SetText("unsaved message")
+editBoxes[1].scripts.OnEscapePressed(editBoxes[1])
+assert(AutomaticGuildInteractionsDB.messages.welcome_back == "custom welcome", "escape did not restore the message")
 
 editBoxes[5]:SetText("-1")
 editBoxes[5].scripts.OnEnterPressed(editBoxes[5])
