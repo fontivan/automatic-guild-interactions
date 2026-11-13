@@ -1,5 +1,5 @@
 -- luacheck: globals AutomaticGuildInteractionsDB UnitName IsInGuild GetNumGuildMembers
--- luacheck: globals GetGuildRosterInfo GuildRoster SendChatMessage date time CreateFrame Settings
+-- luacheck: globals GetGuildRosterInfo GuildRoster SendChatMessage C_Timer date time CreateFrame Settings
 -- luacheck: ignore self
 
 local sentMessages = {}
@@ -8,12 +8,14 @@ local registeredCategory
 local guildMembers = {}
 local currentTime = 100
 local rosterRequested = false
+local scheduledTimers = {}
 
 AutomaticGuildInteractionsDB = {
 	messages = {
 		welcome_back = "saved welcome"
 	},
 	min_message_time = 22,
+	welcome_back_delay = 0.5,
 	features = {
 		congratulations = false
 	}
@@ -42,6 +44,12 @@ end
 function SendChatMessage(message, channel)
 	table.insert(sentMessages, { message = message, channel = channel })
 end
+
+C_Timer = {
+	After = function(delay, callback)
+		table.insert(scheduledTimers, { delay = delay, callback = callback })
+	end
+}
 
 function date()
 	return {}
@@ -98,6 +106,13 @@ local function CreateWidget()
 	return widget
 end
 
+local function RunNextTimer()
+	local timer = table.remove(scheduledTimers, 1)
+	assert(timer ~= nil, "expected a scheduled timer")
+	timer.callback()
+	return timer
+end
+
 function CreateFrame(_, _, _, template)
 	local frame = CreateWidget()
 	frame.template = template
@@ -119,6 +134,7 @@ dofile("automatic-guild-interactions.lua")
 
 assert(AutomaticGuildInteractionsDB.messages.welcome_back == "saved welcome", "saved message was not loaded")
 assert(AutomaticGuildInteractionsDB.min_message_time == 22, "saved rate limit was not loaded")
+assert(AutomaticGuildInteractionsDB.welcome_back_delay == 0.5, "saved welcome-back delay was not loaded")
 assert(registeredCategory ~= nil, "modern options category was not registered")
 registeredCategory.panel.scripts.OnShow()
 
@@ -138,7 +154,7 @@ for _, frame in ipairs(frames) do
 	end
 end
 
-assert(#editBoxes == 5, "expected four message fields and one rate-limit field")
+assert(#editBoxes == 6, "expected four message fields and two timing fields")
 assert(#featureButtons == 4, "expected one checkbox for each feature")
 assert(restoreDefaultsButton ~= nil, "restore-defaults button was not created")
 assert(eventFrame ~= nil, "event frame was not created")
@@ -176,6 +192,10 @@ assert(AutomaticGuildInteractionsDB.messages.welcome_back == "custom welcome", "
 editBoxes[5]:SetText("-1")
 editBoxes[5].scripts.OnEnterPressed(editBoxes[5])
 assert(AutomaticGuildInteractionsDB.min_message_time == 22, "invalid rate limit was saved")
+editBoxes[6]:SetText("-1")
+editBoxes[6].scripts.OnEnterPressed(editBoxes[6])
+assert(AutomaticGuildInteractionsDB.welcome_back_delay == 0.5, "invalid welcome-back delay was saved")
+assert(editBoxes[6].text == "0.5", "invalid delay did not restore the saved welcome-back delay")
 
 eventFrame.scripts.OnEvent(eventFrame, "PLAYER_LEVEL_UP")
 assert(#sentMessages == 1, "level-up event did not send a message")
@@ -190,10 +210,15 @@ assert(
 	"restore defaults did not reset congratulations message"
 )
 assert(AutomaticGuildInteractionsDB.min_message_time == 10, "restore defaults did not reset rate limit")
+assert(AutomaticGuildInteractionsDB.welcome_back_delay == 1, "restore defaults did not reset welcome-back delay")
 assert(AutomaticGuildInteractionsDB.features.level_up, "restore defaults did not re-enable level-up")
 assert(AutomaticGuildInteractionsDB.features.welcome_back, "restore defaults did not re-enable welcome-back")
 assert(AutomaticGuildInteractionsDB.features.welcome, "restore defaults did not re-enable new-member welcomes")
 assert(AutomaticGuildInteractionsDB.features.congratulations, "restore defaults did not re-enable congratulations")
+
+editBoxes[6]:SetText("2.5")
+editBoxes[6].scripts.OnEnterPressed(editBoxes[6])
+assert(AutomaticGuildInteractionsDB.welcome_back_delay == 2.5, "welcome-back delay was not saved")
 
 eventFrame.scripts.OnEvent(eventFrame, "PLAYER_LOGIN")
 assert(rosterRequested, "guild roster was not requested on login")
@@ -207,6 +232,10 @@ assert(#sentMessages == 1, "welcome-back message was sent before the roster was 
 guildMembers = { "First Last-Realm" }
 currentTime = 111
 eventFrame.scripts.OnEvent(eventFrame, "GUILD_ROSTER_UPDATE")
+assert(#sentMessages == 1, "welcome-back message was sent before its delay")
+assert(#scheduledTimers == 1, "welcome-back message was not scheduled")
+assert(scheduledTimers[1].delay == 2.5, "configured welcome-back message delay was not used")
+RunNextTimer()
 assert(#sentMessages == 2, "multiword guild member was not welcomed after the roster update")
 assert(
 	sentMessages[2].message == "wb" and sentMessages[2].channel == "GUILD",
@@ -216,6 +245,8 @@ assert(
 guildMembers = { "SingleName" }
 currentTime = 122
 eventFrame.scripts.OnEvent(eventFrame, "CHAT_MSG_SYSTEM", "SingleName has come online.")
+assert(#sentMessages == 2, "single-name welcome-back message was sent before its delay")
+RunNextTimer()
 assert(#sentMessages == 3, "single-name guild member was not welcomed")
 assert(sentMessages[3].message == "wb", "single-name welcome-back message changed")
 

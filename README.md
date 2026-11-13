@@ -4,7 +4,7 @@ An addon for World of Warcraft: Classic to automatically perform some simple int
  - Dinging to guild chat after leveling
  - Congratulating other guild members when they let you know they leveled up
 
-Open the addon's settings in the WoW Interface Options to enable or disable each feature, customize its messages, and set the minimum time between messages. Settings are saved per account. Use **Restore Defaults** in the options panel to reset them.
+Open the addon's settings in the WoW Interface Options to enable or disable each feature, customize its messages, set the minimum time between messages, and configure the welcome-back message delay (1 second by default). Settings are saved per account. Use **Restore Defaults** in the options panel to reset them.
 
 # Installation
 

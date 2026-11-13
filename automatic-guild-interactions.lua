@@ -5,6 +5,7 @@
 -- luacheck: globals CreateFrame GameFontNormalLarge GameFontHighlightSmall GameFontNormal
 -- luacheck: globals InputBoxTemplate UIPanelButtonTemplate
 -- luacheck: globals GuildRoster C_GuildInfo
+-- luacheck: globals C_Timer
 
 -- Global table for storing everything
 -- luacheck: ignore UnitName
@@ -20,7 +21,8 @@ local AutoGuild = {
 	},
 	rate_limit = {
 		last_message_sent = 0,
-		min_message_time = 10
+		min_message_time = 10,
+		welcome_back_delay = 1
 	},
 	messages = {
 		level_up = "ding",
@@ -70,6 +72,10 @@ local function LoadSavedSettings()
 		AutoGuild.rate_limit.min_message_time = saved.min_message_time;
 	end
 
+	if type(saved.welcome_back_delay) == "number" and saved.welcome_back_delay >= 0 then
+		AutoGuild.rate_limit.welcome_back_delay = saved.welcome_back_delay;
+	end
+
 	if type(saved.features) == "table" then
 		for feature, enabled in pairs(saved.features) do
 			if type(AutoGuild.features[feature]) == "boolean" and type(enabled) == "boolean" then
@@ -88,6 +94,7 @@ local function SaveSettings()
 			welcome = AutoGuild.messages.welcome
 		},
 		min_message_time = AutoGuild.rate_limit.min_message_time,
+		welcome_back_delay = AutoGuild.rate_limit.welcome_back_delay,
 		features = {
 			welcome_back = AutoGuild.features.welcome_back,
 			welcome = AutoGuild.features.welcome,
@@ -198,7 +205,11 @@ function AutoGuild:WelcomeBack(detected_player)
 		end
 		if member_name == detected_name
 			and (detected_realm == "" or member_realm == "" or detected_realm == member_realm) then
-			AutoGuild.SendMessage(_, AutoGuild.messages.welcome_back, AutoGuild.channels.guild);
+			C_Timer.After(AutoGuild.rate_limit.welcome_back_delay, function()
+				if AutoGuild.features.welcome_back then
+					AutoGuild.SendMessage(_, AutoGuild.messages.welcome_back, AutoGuild.channels.guild);
+				end
+			end);
 			return;
 		end
 	end
@@ -343,6 +354,7 @@ local function UpdateControlValues()
 		controls[definition.key]:SetText(AutoGuild.messages[definition.key]);
 	end
 	controls.min_message_time:SetText(tostring(AutoGuild.rate_limit.min_message_time));
+	controls.welcome_back_delay:SetText(tostring(AutoGuild.rate_limit.welcome_back_delay));
 end
 
 local function CreateFeatureOption(definition, yOffset)
@@ -425,9 +437,40 @@ delayEditBox:SetScript("OnEscapePressed", function(self)
 end);
 controls.min_message_time = delayEditBox;
 
+local welcomeBackDelayLabel = optionsPanel:CreateFontString(nil, "ARTWORK", "GameFontNormal");
+welcomeBackDelayLabel:SetPoint("TOPLEFT", delayEditBox, "BOTTOMLEFT", 0, -18);
+welcomeBackDelayLabel:SetText("Welcome-back message delay (seconds)");
+
+local welcomeBackDelayEditBox = CreateFrame("EditBox", nil, optionsPanel, "InputBoxTemplate");
+welcomeBackDelayEditBox:SetSize(100, 24);
+welcomeBackDelayEditBox:SetPoint("TOPLEFT", welcomeBackDelayLabel, "BOTTOMLEFT", 0, -6);
+welcomeBackDelayEditBox:SetAutoFocus(false);
+welcomeBackDelayEditBox:SetScript("OnEnterPressed", function(self)
+	local delay = tonumber(self:GetText());
+	if delay ~= nil and delay >= 0 then
+		AutoGuild.rate_limit.welcome_back_delay = delay;
+		SaveSettings();
+	end
+	self:SetText(tostring(AutoGuild.rate_limit.welcome_back_delay));
+	self:ClearFocus();
+end);
+welcomeBackDelayEditBox:SetScript("OnEditFocusLost", function(self)
+	local delay = tonumber(self:GetText());
+	if delay ~= nil and delay >= 0 then
+		AutoGuild.rate_limit.welcome_back_delay = delay;
+		SaveSettings();
+	end
+	self:SetText(tostring(AutoGuild.rate_limit.welcome_back_delay));
+end);
+welcomeBackDelayEditBox:SetScript("OnEscapePressed", function(self)
+	self:SetText(tostring(AutoGuild.rate_limit.welcome_back_delay));
+	self:ClearFocus();
+end);
+controls.welcome_back_delay = welcomeBackDelayEditBox;
+
 local restoreDefaultsButton = CreateFrame("Button", nil, optionsPanel, "UIPanelButtonTemplate");
 restoreDefaultsButton:SetSize(150, 24);
-restoreDefaultsButton:SetPoint("TOPLEFT", delayEditBox, "BOTTOMLEFT", -6, -18);
+restoreDefaultsButton:SetPoint("TOPLEFT", welcomeBackDelayEditBox, "BOTTOMLEFT", -6, -18);
 restoreDefaultsButton:SetText("Restore Defaults");
 restoreDefaultsButton:SetScript("OnClick", function()
 	AutoGuild.messages.welcome_back = "wb";
@@ -435,6 +478,7 @@ restoreDefaultsButton:SetScript("OnClick", function()
 	AutoGuild.messages.level_up = "ding";
 	AutoGuild.messages.congratulations = "grats";
 	AutoGuild.rate_limit.min_message_time = 10;
+	AutoGuild.rate_limit.welcome_back_delay = 1;
 	for _, definition in ipairs(featureDefinitions) do
 		AutoGuild.features[definition.key] = true;
 	end
