@@ -2,7 +2,7 @@
 ## Title: Automatic Guild Interactions
 ## Notes: Automatically perform some simple guild interactions like welcoming members back and dinging.
 ## Author: fontivan
-## Version: 3.0.1
+## Version: 3.1.0
 ## X-Curse-Project-ID: 602729
 ## SavedVariables: AutomaticGuildInteractionsDB
 

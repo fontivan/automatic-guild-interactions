@@ -1,3 +1,10 @@
+v3.1.0
+- Added settings to enable or disable each guild interaction
+- Added a configurable delay before welcome-back messages
+- Grouped related feature settings together in the options panel
+- Added short descriptions for each section of the options panel
+- Fixed settings persistence, including loading defaults and saving text field changes
+
 v3.0.1
 - Fixed welcome-back messages for multi-part character names
 
