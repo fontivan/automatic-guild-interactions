@@ -495,7 +495,11 @@ controls.welcome_back_delay = welcomeBackDelayEditBox;
 
 previousFeatureControl = welcomeBackDelayEditBox;
 for index = 2, #featureDefinitions do
-	previousFeatureControl = CreateFeatureGroup(featureDefinitions[index], optionDefinitions[index], previousFeatureControl);
+	previousFeatureControl = CreateFeatureGroup(
+		featureDefinitions[index],
+		optionDefinitions[index],
+		previousFeatureControl
+	);
 end
 
 local generalHeading = CreateSectionHeading("General settings", previousFeatureControl);

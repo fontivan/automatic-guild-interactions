@@ -231,12 +231,18 @@ assertFeatureGroup(3, "Level-up message", levelUpMessageBox, welcomeMessageBox)
 assertFeatureGroup(4, "Congratulations message", congratulationsMessageBox, levelUpMessageBox)
 local welcomeBackDelayLabel = FindFontString("Welcome-back message delay (seconds)", welcomeBackMessageBox)
 assert(welcomeBackDelayLabel ~= nil, "welcome-back delay was not grouped with its feature")
-assert(welcomeBackDelayBox.point[2] == welcomeBackDelayLabel, "welcome-back delay field was not grouped under its label")
+assert(
+	welcomeBackDelayBox.point[2] == welcomeBackDelayLabel,
+	"welcome-back delay field was not grouped under its label"
+)
 local generalHeading = FindFontString("General settings", congratulationsMessageBox)
 assert(generalHeading ~= nil, "general settings were not separated from feature groups")
 local minMessageTimeLabel = FindFontString("Minimum time between messages (seconds)", generalHeading)
 assert(minMessageTimeLabel ~= nil, "minimum message interval was not grouped under general settings")
-assert(minMessageTimeBox.point[2] == minMessageTimeLabel, "minimum message interval field was not grouped under its label")
+assert(
+	minMessageTimeBox.point[2] == minMessageTimeLabel,
+	"minimum message interval field was not grouped under its label"
+)
 
 assert(featureButtons[1].checked, "features should be enabled by default")
 assert(not featureButtons[4].checked, "saved feature setting was not loaded")
@@ -359,4 +365,7 @@ currentTime = 133
 eventFrame.scripts.OnEvent(eventFrame, "CHAT_MSG_SYSTEM", "SingleName has come online.")
 assert(#sentMessages == 3, "disabled welcome-back feature sent a message")
 
-print("Settings, feature toggles, persistence, defaults, single- and multiword login welcomes, and level-up behavior passed")
+print(
+	"Settings, feature toggles, persistence, defaults, single- and multiword login welcomes, "
+		.. "and level-up behavior passed"
+)
