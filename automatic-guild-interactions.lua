@@ -48,6 +48,7 @@ local AutoGuild = {
 	},
 	subscription_events = {
 		"CHAT_MSG_SYSTEM",
+		"ADDON_LOADED",
 		"PLAYER_LEVEL_UP",
 		"CHAT_MSG_GUILD",
 		"PLAYER_LOGIN",
@@ -59,12 +60,12 @@ local AutoGuild = {
 
 local guildRosterReady = false;
 local pendingWelcomePlayers = {};
-
-if type(AutomaticGuildInteractionsDB) ~= "table" then
-	AutomaticGuildInteractionsDB = {};
-end
+local InitializeSettings;
 
 local function LoadSavedSettings()
+	if type(AutomaticGuildInteractionsDB) ~= "table" then
+		AutomaticGuildInteractionsDB = {};
+	end
 	local saved = AutomaticGuildInteractionsDB;
 
 	if type(saved.messages) == "table" then
@@ -120,8 +121,6 @@ local function SaveSettings()
 		}
 	};
 end
-
-LoadSavedSettings();
 
 -- Rate limited function to send messages to chat channel
 function AutoGuild:SendMessage(message, channel)
@@ -241,6 +240,12 @@ end
 
 -- On receiving a message, run this function
 AutoGuild.frame:SetScript("OnEvent", function (_, event, message, author)
+	if event == "ADDON_LOADED" then
+		if message == "automatic-guild-interactions" then
+			InitializeSettings();
+		end
+		return;
+	end
 
 	-- If we aren't in a guild then do nothing
 	-- luacheck: ignore IsInGuild
@@ -376,6 +381,11 @@ local function UpdateControlValues()
 	controls.min_message_time:SetCursorPosition(0);
 	controls.welcome_back_delay:SetText(tostring(AutoGuild.rate_limit.welcome_back_delay));
 	controls.welcome_back_delay:SetCursorPosition(0);
+end
+
+InitializeSettings = function()
+	LoadSavedSettings();
+	UpdateControlValues();
 end
 
 local function CreateSectionHeading(text, previousControl)
@@ -560,4 +570,3 @@ elseif InterfaceOptions_AddCategory then
 end
 
 optionsPanel:HookScript("OnShow", UpdateControlValues);
-UpdateControlValues();

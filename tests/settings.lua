@@ -11,7 +11,7 @@ local currentTime = 100
 local rosterRequested = false
 local scheduledTimers = {}
 
-AutomaticGuildInteractionsDB = {
+local savedVariables = {
 	messages = {
 		welcome_back = "saved welcome",
 		welcome = "",
@@ -159,17 +159,8 @@ Settings = {
 
 dofile("automatic-guild-interactions.lua")
 
-assert(AutomaticGuildInteractionsDB.messages.welcome_back == "saved welcome", "saved message was not loaded")
-assert(AutomaticGuildInteractionsDB.messages.welcome == "welcome", "empty welcome message was not reset")
-assert(AutomaticGuildInteractionsDB.messages.level_up == "ding", "blank level-up message was not reset")
-assert(
-	AutomaticGuildInteractionsDB.messages.congratulations == "grats",
-	"empty congratulations message was not reset"
-)
-assert(AutomaticGuildInteractionsDB.min_message_time == 22, "saved rate limit was not loaded")
-assert(AutomaticGuildInteractionsDB.welcome_back_delay == 0.5, "saved welcome-back delay was not loaded")
+assert(AutomaticGuildInteractionsDB == nil, "saved variables were initialized before ADDON_LOADED")
 assert(registeredCategory ~= nil, "modern options category was not registered")
-registeredCategory.panel.scripts.OnShow()
 
 local editBoxes = {}
 local featureButtons = {}
@@ -191,6 +182,19 @@ assert(#editBoxes == 6, "expected four message fields and two timing fields")
 assert(#featureButtons == 4, "expected one checkbox for each feature")
 assert(restoreDefaultsButton ~= nil, "restore-defaults button was not created")
 assert(eventFrame ~= nil, "event frame was not created")
+
+AutomaticGuildInteractionsDB = savedVariables
+eventFrame.scripts.OnEvent(eventFrame, "ADDON_LOADED", "automatic-guild-interactions")
+assert(AutomaticGuildInteractionsDB.messages.welcome_back == "saved welcome", "saved message was not loaded")
+assert(AutomaticGuildInteractionsDB.messages.welcome == "welcome", "empty welcome message was not reset")
+assert(AutomaticGuildInteractionsDB.messages.level_up == "ding", "blank level-up message was not reset")
+assert(
+	AutomaticGuildInteractionsDB.messages.congratulations == "grats",
+	"empty congratulations message was not reset"
+)
+assert(AutomaticGuildInteractionsDB.min_message_time == 22, "saved rate limit was not loaded")
+assert(AutomaticGuildInteractionsDB.welcome_back_delay == 0.5, "saved welcome-back delay was not loaded")
+registeredCategory.panel.scripts.OnShow()
 
 local welcomeBackMessageBox = editBoxes[1]
 local welcomeBackDelayBox = editBoxes[2]
