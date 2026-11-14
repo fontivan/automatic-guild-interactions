@@ -9,6 +9,13 @@
 
 -- Global table for storing everything
 -- luacheck: ignore UnitName
+local defaultMessages = {
+	level_up = "ding",
+	welcome_back = "wb",
+	congratulations = "grats",
+	welcome = "welcome"
+};
+
 local AutoGuild = {
 	patterns = {
 		level = {
@@ -25,10 +32,10 @@ local AutoGuild = {
 		welcome_back_delay = 1
 	},
 	messages = {
-		level_up = "ding",
-		welcome_back = "wb",
-		congratulations = "grats",
-		welcome = "welcome"
+		level_up = defaultMessages.level_up,
+		welcome_back = defaultMessages.welcome_back,
+		congratulations = defaultMessages.congratulations,
+		welcome = defaultMessages.welcome
 	},
 	features = {
 		welcome_back = true,
@@ -61,9 +68,12 @@ local function LoadSavedSettings()
 	local saved = AutomaticGuildInteractionsDB;
 
 	if type(saved.messages) == "table" then
-		for setting, value in pairs(saved.messages) do
-			if type(AutoGuild.messages[setting]) == "string" and type(value) == "string" then
+		for setting, default in pairs(defaultMessages) do
+			local value = saved.messages[setting];
+			if type(value) == "string" and value:match("%S") then
 				AutoGuild.messages[setting] = value;
+			elseif type(value) == "string" then
+				saved.messages[setting] = default;
 			end
 		end
 	end
@@ -86,6 +96,13 @@ local function LoadSavedSettings()
 end
 
 local function SaveSettings()
+	for setting, default in pairs(defaultMessages) do
+		local message = AutoGuild.messages[setting];
+		if type(message) ~= "string" or not message:match("%S") then
+			AutoGuild.messages[setting] = default;
+		end
+	end
+
 	AutomaticGuildInteractionsDB = {
 		messages = {
 			level_up = AutoGuild.messages.level_up,
@@ -351,10 +368,14 @@ local function UpdateControlValues()
 		controls["feature_" .. definition.key]:SetChecked(AutoGuild.features[definition.key]);
 	end
 	for _, definition in ipairs(optionDefinitions) do
-		controls[definition.key]:SetText(AutoGuild.messages[definition.key]);
+		local editBox = controls[definition.key];
+		editBox:SetText(AutoGuild.messages[definition.key]);
+		editBox:SetCursorPosition(0);
 	end
 	controls.min_message_time:SetText(tostring(AutoGuild.rate_limit.min_message_time));
+	controls.min_message_time:SetCursorPosition(0);
 	controls.welcome_back_delay:SetText(tostring(AutoGuild.rate_limit.welcome_back_delay));
+	controls.welcome_back_delay:SetCursorPosition(0);
 end
 
 local function CreateFeatureOption(definition, yOffset)
@@ -388,17 +409,28 @@ local function CreateTextOption(definition, yOffset)
 		originalMessage = AutoGuild.messages[definition.key];
 	end);
 	editBox:SetScript("OnTextChanged", function(self)
-		AutoGuild.messages[definition.key] = self:GetText();
-		SaveSettings();
+		local message = self:GetText();
+		if message:match("%S") then
+			AutoGuild.messages[definition.key] = message;
+			SaveSettings();
+		end
 	end);
-	editBox:SetScript("OnEnterPressed", function(self)
-		AutoGuild.messages[definition.key] = self:GetText();
+	local function RestoreDefaultIfBlank(self)
+		if self:GetText():match("%S") then
+			return;
+		end
+		local default = defaultMessages[definition.key];
+		self:SetText(default);
+		self:SetCursorPosition(0);
+		AutoGuild.messages[definition.key] = default;
 		SaveSettings();
+	end
+	editBox:SetScript("OnEnterPressed", function(self)
+		RestoreDefaultIfBlank(self);
 		self:ClearFocus();
 	end);
 	editBox:SetScript("OnEditFocusLost", function(self)
-		AutoGuild.messages[definition.key] = self:GetText();
-		SaveSettings();
+		RestoreDefaultIfBlank(self);
 	end);
 	editBox:SetScript("OnEscapePressed", function(self)
 		AutoGuild.messages[definition.key] = originalMessage;
@@ -484,10 +516,9 @@ restoreDefaultsButton:SetSize(150, 24);
 restoreDefaultsButton:SetPoint("TOPLEFT", welcomeBackDelayEditBox, "BOTTOMLEFT", -6, -18);
 restoreDefaultsButton:SetText("Restore Defaults");
 restoreDefaultsButton:SetScript("OnClick", function()
-	AutoGuild.messages.welcome_back = "wb";
-	AutoGuild.messages.welcome = "welcome";
-	AutoGuild.messages.level_up = "ding";
-	AutoGuild.messages.congratulations = "grats";
+	for setting, default in pairs(defaultMessages) do
+		AutoGuild.messages[setting] = default;
+	end
 	AutoGuild.rate_limit.min_message_time = 10;
 	AutoGuild.rate_limit.welcome_back_delay = 1;
 	for _, definition in ipairs(featureDefinitions) do
@@ -495,9 +526,8 @@ restoreDefaultsButton:SetScript("OnClick", function()
 	end
 	SaveSettings();
 	UpdateControlValues();
+	C_Timer.After(0, UpdateControlValues);
 end);
-
-optionsPanel:SetScript("OnShow", UpdateControlValues);
 
 if Settings and Settings.RegisterCanvasLayoutCategory then
 	local category = Settings.RegisterCanvasLayoutCategory(optionsPanel, optionsPanel.name);
@@ -505,3 +535,6 @@ if Settings and Settings.RegisterCanvasLayoutCategory then
 elseif InterfaceOptions_AddCategory then
 	InterfaceOptions_AddCategory(optionsPanel);
 end
+
+optionsPanel:HookScript("OnShow", UpdateControlValues);
+UpdateControlValues();
