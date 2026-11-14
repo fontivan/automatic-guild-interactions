@@ -1,12 +1,12 @@
 TOOLS_DIR ?= .tools
 LUA_VERSION := $(shell cat .lua-version)
 LUA_ABI_VERSION := $(word 1,$(subst ., ,$(LUA_VERSION))).$(word 2,$(subst ., ,$(LUA_VERSION)))
-LUAROCKS_VERSION ?= 3.13.0
-LUACHECK_VERSION ?= 1.2.0-1
+LUAROCKS_VERSION := $(shell cat .luarocks-version)
+LUACHECK_VERSION := $(shell cat .luacheck-version)
 
 LUA_PREFIX := $(abspath $(TOOLS_DIR)/lua-$(LUA_VERSION))
 LUAROCKS_PREFIX := $(abspath $(TOOLS_DIR)/luarocks-$(LUAROCKS_VERSION)-lua-$(LUA_VERSION))
-LUAROCKS_TREE := $(abspath $(TOOLS_DIR)/rocks-lua-$(LUA_VERSION))
+LUAROCKS_TREE := $(abspath $(TOOLS_DIR)/rocks-lua-$(LUA_VERSION)-luarocks-$(LUAROCKS_VERSION)-luacheck-$(LUACHECK_VERSION))
 LUA_SOURCE_DIR := $(TOOLS_DIR)/src/lua-$(LUA_VERSION)
 LUAROCKS_SOURCE_DIR := $(TOOLS_DIR)/src/luarocks-$(LUAROCKS_VERSION)
 LUA_ARCHIVE := $(TOOLS_DIR)/downloads/lua-$(LUA_VERSION).tar.gz

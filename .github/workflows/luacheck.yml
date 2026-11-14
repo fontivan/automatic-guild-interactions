@@ -26,20 +26,27 @@ jobs:
       # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
       - uses: actions/checkout@v3
 
-      - name: Read Lua version
-        id: lua-version
-        run: echo "version=$(cat .lua-version)" >> "$GITHUB_OUTPUT"
+      - name: Read tool versions
+        id: tool-versions
+        run: |
+          echo "lua=$(cat .lua-version)" >> "$GITHUB_OUTPUT"
+          echo "luarocks=$(cat .luarocks-version)" >> "$GITHUB_OUTPUT"
+          echo "luacheck=$(cat .luacheck-version)" >> "$GITHUB_OUTPUT"
 
       - name: Set up Lua
         uses: leafo/gh-actions-lua@v13
         with:
-          luaVersion: ${{ steps.lua-version.outputs.version }}
+          luaVersion: ${{ steps.tool-versions.outputs.lua }}
 
       - name: Set up LuaRocks
         uses: leafo/gh-actions-luarocks@v4
+        with:
+          luaRocksVersion: ${{ steps.tool-versions.outputs.luarocks }}
 
       - name: Install Luacheck
-        run: luarocks install luacheck
+        env:
+          LUACHECK_VERSION: ${{ steps.tool-versions.outputs.luacheck }}
+        run: luarocks install luacheck "$LUACHECK_VERSION"
 
       - name: Run Make targets
         run: make syntax lint test diff-check

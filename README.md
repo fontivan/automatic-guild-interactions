@@ -22,7 +22,7 @@ Use `./install.sh --help` to display usage. The script replaces the existing `au
 
 # Development
 
-The Lua checks use the version pinned in [`.lua-version`](./.lua-version), shared with CI and matching WoW's Lua 5.1 syntax baseline. Run `make tools` to download and build that Lua version and LuaRocks locally under `.tools/`, then install Luacheck 1.2.0 there. `make check` bootstraps these tools automatically. The bootstrap requires Make, curl, a C toolchain, Git, tar, and unzip; it does not install or rely on system Lua packages.
+The Lua checks use the versions pinned in [`.lua-version`](./.lua-version), [`.luarocks-version`](./.luarocks-version), and [`.luacheck-version`](./.luacheck-version), shared with CI. The Lua version matches WoW's Lua 5.1 syntax baseline. Run `make tools` to download and build the tools locally under `.tools/`; `make check` bootstraps them automatically. The bootstrap requires Make, curl, a C toolchain, Git, tar, and unzip; it does not install or rely on system Lua packages.
 
 Run `make all` to run the Lua syntax check, Luacheck, settings tests, whitespace check, ShellCheck, and bashate. This also creates/updates a local Python virtual environment for the optional shell lint tools:
 
