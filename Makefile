@@ -25,7 +25,9 @@ VENV ?= .venv
 SHELLCHECK ?= $(VENV)/bin/shellcheck
 BASHATE ?= $(VENV)/bin/bashate
 
-.PHONY: check tools syntax lint venv shell-lint test diff-check
+.PHONY: all check tools syntax lint venv shell-lint test diff-check
+
+all: check shell-lint
 
 check: syntax lint test diff-check
 
@@ -73,7 +75,7 @@ venv:
 	$(PYTHON) -m venv $(VENV)
 	$(VENV)/bin/python -m pip install shellcheck-py bashate
 
-shell-lint:
+shell-lint: venv
 	$(SHELLCHECK) install.sh
 	$(BASHATE) install.sh
 
@@ -81,4 +83,4 @@ test:
 	$(LUA) tests/settings.lua
 
 diff-check:
-	git diff --check
+	git --no-pager diff --check

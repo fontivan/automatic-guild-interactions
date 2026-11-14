@@ -24,11 +24,10 @@ Use `./install.sh --help` to display usage. The script replaces the existing `au
 
 The Lua checks use the version pinned in [`.lua-version`](./.lua-version), shared with CI and matching WoW's Lua 5.1 syntax baseline. Run `make tools` to download and build that Lua version and LuaRocks locally under `.tools/`, then install Luacheck 1.2.0 there. `make check` bootstraps these tools automatically. The bootstrap requires Make, curl, a C toolchain, Git, tar, and unzip; it does not install or rely on system Lua packages.
 
-Optional shell linting for `install.sh` uses Python 3 to create a local virtual environment and install ShellCheck and bashate:
+Run `make all` to run the Lua syntax check, Luacheck, settings tests, whitespace check, ShellCheck, and bashate. This also creates/updates a local Python virtual environment for the optional shell lint tools:
 
 ```sh
-make venv
-make shell-lint
+make all
 ```
 
-Run `make check` to validate Lua syntax, run Luacheck, execute the settings behavior checks, and check the Git diff for whitespace errors. Individual checks are available as `make syntax`, `make lint`, `make venv`, `make shell-lint`, `make test`, and `make diff-check`.
+Run `make check` for the Lua checks and whitespace check only. Individual checks are available as `make syntax`, `make lint`, `make venv`, `make shell-lint`, `make test`, and `make diff-check`.
