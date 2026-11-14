@@ -22,15 +22,9 @@ Use `./install.sh --help` to display usage. The script replaces the existing `au
 
 # Development
 
-The checks require Lua, LuaRocks, Lua development headers, Make, and a C compiler. On Fedora, install the system packages and Luacheck with:
+The Lua checks use the same Lua 5.4 toolchain as CI. Run `make tools` to download and build Lua 5.4.8 and LuaRocks 3.13.0 locally under `.tools/`, then install Luacheck 1.2.0 there. `make check` bootstraps these tools automatically. The bootstrap requires Make, curl, a C toolchain, Git, tar, and unzip; it does not install or rely on system Lua packages.
 
-```sh
-sudo dnf install lua lua-devel luarocks make gcc
-luarocks install --local luacheck
-export PATH="$HOME/.luarocks/bin:$PATH"
-```
-
-To create a Python virtual environment and install ShellCheck and bashate:
+Optional shell linting for `install.sh` uses Python 3 to create a local virtual environment and install ShellCheck and bashate:
 
 ```sh
 make venv

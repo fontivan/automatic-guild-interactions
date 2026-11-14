@@ -1,6 +1,7 @@
 # Compiled Lua sources
 luac.out
 .venv/
+.tools/
 
 # luarocks build files
 *.src.rock
