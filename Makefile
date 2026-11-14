@@ -1,6 +1,6 @@
 TOOLS_DIR ?= .tools
-LUA_VERSION ?= 5.4.8
-LUA_ABI_VERSION ?= 5.4
+LUA_VERSION := $(shell cat .lua-version)
+LUA_ABI_VERSION := $(word 1,$(subst ., ,$(LUA_VERSION))).$(word 2,$(subst ., ,$(LUA_VERSION)))
 LUAROCKS_VERSION ?= 3.13.0
 LUACHECK_VERSION ?= 1.2.0-1
 

@@ -22,7 +22,7 @@ Use `./install.sh --help` to display usage. The script replaces the existing `au
 
 # Development
 
-The Lua checks use the same Lua 5.4 toolchain as CI. Run `make tools` to download and build Lua 5.4.8 and LuaRocks 3.13.0 locally under `.tools/`, then install Luacheck 1.2.0 there. `make check` bootstraps these tools automatically. The bootstrap requires Make, curl, a C toolchain, Git, tar, and unzip; it does not install or rely on system Lua packages.
+The Lua checks use the version pinned in [`.lua-version`](./.lua-version), shared with CI. Run `make tools` to download and build that Lua version and LuaRocks locally under `.tools/`, then install Luacheck 1.2.0 there. `make check` bootstraps these tools automatically. The bootstrap requires Make, curl, a C toolchain, Git, tar, and unzip; it does not install or rely on system Lua packages.
 
 Optional shell linting for `install.sh` uses Python 3 to create a local virtual environment and install ShellCheck and bashate:
 
