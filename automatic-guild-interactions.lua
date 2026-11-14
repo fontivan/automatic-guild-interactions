@@ -357,10 +357,10 @@ local featureDefinitions = {
 	{ key = "congratulations", label = "Congratulations message" }
 };
 local optionDefinitions = {
-	{ key = "welcome_back", label = "Welcome-back message" },
-	{ key = "welcome", label = "New guild member message" },
-	{ key = "level_up", label = "Level-up message" },
-	{ key = "congratulations", label = "Congratulations message" }
+	{ key = "welcome_back", label = "Message" },
+	{ key = "welcome", label = "Message" },
+	{ key = "level_up", label = "Message" },
+	{ key = "congratulations", label = "Message" }
 };
 
 local function UpdateControlValues()
@@ -378,14 +378,25 @@ local function UpdateControlValues()
 	controls.welcome_back_delay:SetCursorPosition(0);
 end
 
-local function CreateFeatureOption(definition, yOffset)
+local function CreateSectionHeading(text, previousControl)
+	local heading = optionsPanel:CreateFontString(nil, "ARTWORK", "GameFontNormalLarge");
+	if previousControl then
+		heading:SetPoint("TOPLEFT", previousControl, "BOTTOMLEFT", 0, -18);
+	else
+		heading:SetPoint("TOPLEFT", 16, -60);
+	end
+	heading:SetText(text);
+	return heading;
+end
+
+local function CreateFeatureOption(definition, heading)
 	local checkButton = CreateFrame("CheckButton", nil, optionsPanel, "UICheckButtonTemplate");
 	checkButton:SetSize(24, 24);
-	checkButton:SetPoint("TOPLEFT", 16, yOffset);
+	checkButton:SetPoint("TOPLEFT", heading, "BOTTOMLEFT", 0, -4);
 
 	local label = optionsPanel:CreateFontString(nil, "ARTWORK", "GameFontNormal");
 	label:SetPoint("LEFT", checkButton, "RIGHT", 4, 0);
-	label:SetText(definition.label);
+	label:SetText("Enable");
 
 	checkButton:SetScript("OnClick", function(self)
 		local checked = self:GetChecked();
@@ -393,11 +404,12 @@ local function CreateFeatureOption(definition, yOffset)
 		SaveSettings();
 	end);
 	controls["feature_" .. definition.key] = checkButton;
+	return checkButton;
 end
 
-local function CreateTextOption(definition, yOffset)
+local function CreateTextOption(definition, previousControl)
 	local label = optionsPanel:CreateFontString(nil, "ARTWORK", "GameFontNormal");
-	label:SetPoint("TOPLEFT", 16, yOffset);
+	label:SetPoint("TOPLEFT", previousControl, "BOTTOMLEFT", 0, -4);
 	label:SetText(definition.label);
 
 	local editBox = CreateFrame("EditBox", nil, optionsPanel, "InputBoxTemplate");
@@ -439,49 +451,19 @@ local function CreateTextOption(definition, yOffset)
 		self:ClearFocus();
 	end);
 	controls[definition.key] = editBox;
+	return editBox;
 end
 
-for index, definition in ipairs(featureDefinitions) do
-	CreateFeatureOption(definition, -60 - ((index - 1) * 28));
+local function CreateFeatureGroup(featureDefinition, optionDefinition, previousControl)
+	local heading = CreateSectionHeading(featureDefinition.label, previousControl);
+	local checkButton = CreateFeatureOption(featureDefinition, heading);
+	return CreateTextOption(optionDefinition, checkButton);
 end
 
-for index, definition in ipairs(optionDefinitions) do
-	CreateTextOption(definition, -180 - ((index - 1) * 58));
-end
-
-local delayLabel = optionsPanel:CreateFontString(nil, "ARTWORK", "GameFontNormal");
-delayLabel:SetPoint("TOPLEFT", 16, -180 - (#optionDefinitions * 58));
-delayLabel:SetText("Minimum time between messages (seconds)");
-
-local delayEditBox = CreateFrame("EditBox", nil, optionsPanel, "InputBoxTemplate");
-delayEditBox:SetSize(100, 24);
-delayEditBox:SetPoint("TOPLEFT", delayLabel, "BOTTOMLEFT", 0, -6);
-delayEditBox:SetAutoFocus(false);
-delayEditBox:SetScript("OnEnterPressed", function(self)
-	local delay = tonumber(self:GetText());
-	if delay ~= nil and delay >= 0 then
-		AutoGuild.rate_limit.min_message_time = delay;
-		SaveSettings();
-	end
-	self:SetText(tostring(AutoGuild.rate_limit.min_message_time));
-	self:ClearFocus();
-end);
-delayEditBox:SetScript("OnEditFocusLost", function(self)
-	local delay = tonumber(self:GetText());
-	if delay ~= nil and delay >= 0 then
-		AutoGuild.rate_limit.min_message_time = delay;
-		SaveSettings();
-	end
-	self:SetText(tostring(AutoGuild.rate_limit.min_message_time));
-end);
-delayEditBox:SetScript("OnEscapePressed", function(self)
-	self:SetText(tostring(AutoGuild.rate_limit.min_message_time));
-	self:ClearFocus();
-end);
-controls.min_message_time = delayEditBox;
+local previousFeatureControl = CreateFeatureGroup(featureDefinitions[1], optionDefinitions[1]);
 
 local welcomeBackDelayLabel = optionsPanel:CreateFontString(nil, "ARTWORK", "GameFontNormal");
-welcomeBackDelayLabel:SetPoint("TOPLEFT", delayEditBox, "BOTTOMLEFT", 0, -18);
+welcomeBackDelayLabel:SetPoint("TOPLEFT", previousFeatureControl, "BOTTOMLEFT", 0, -12);
 welcomeBackDelayLabel:SetText("Welcome-back message delay (seconds)");
 
 local welcomeBackDelayEditBox = CreateFrame("EditBox", nil, optionsPanel, "InputBoxTemplate");
@@ -511,9 +493,46 @@ welcomeBackDelayEditBox:SetScript("OnEscapePressed", function(self)
 end);
 controls.welcome_back_delay = welcomeBackDelayEditBox;
 
+previousFeatureControl = welcomeBackDelayEditBox;
+for index = 2, #featureDefinitions do
+	previousFeatureControl = CreateFeatureGroup(featureDefinitions[index], optionDefinitions[index], previousFeatureControl);
+end
+
+local generalHeading = CreateSectionHeading("General settings", previousFeatureControl);
+local delayLabel = optionsPanel:CreateFontString(nil, "ARTWORK", "GameFontNormal");
+delayLabel:SetPoint("TOPLEFT", generalHeading, "BOTTOMLEFT", 0, -4);
+delayLabel:SetText("Minimum time between messages (seconds)");
+
+local delayEditBox = CreateFrame("EditBox", nil, optionsPanel, "InputBoxTemplate");
+delayEditBox:SetSize(100, 24);
+delayEditBox:SetPoint("TOPLEFT", delayLabel, "BOTTOMLEFT", 0, -6);
+delayEditBox:SetAutoFocus(false);
+delayEditBox:SetScript("OnEnterPressed", function(self)
+	local delay = tonumber(self:GetText());
+	if delay ~= nil and delay >= 0 then
+		AutoGuild.rate_limit.min_message_time = delay;
+		SaveSettings();
+	end
+	self:SetText(tostring(AutoGuild.rate_limit.min_message_time));
+	self:ClearFocus();
+end);
+delayEditBox:SetScript("OnEditFocusLost", function(self)
+	local delay = tonumber(self:GetText());
+	if delay ~= nil and delay >= 0 then
+		AutoGuild.rate_limit.min_message_time = delay;
+		SaveSettings();
+	end
+	self:SetText(tostring(AutoGuild.rate_limit.min_message_time));
+end);
+delayEditBox:SetScript("OnEscapePressed", function(self)
+	self:SetText(tostring(AutoGuild.rate_limit.min_message_time));
+	self:ClearFocus();
+end);
+controls.min_message_time = delayEditBox;
+
 local restoreDefaultsButton = CreateFrame("Button", nil, optionsPanel, "UIPanelButtonTemplate");
 restoreDefaultsButton:SetSize(150, 24);
-restoreDefaultsButton:SetPoint("TOPLEFT", welcomeBackDelayEditBox, "BOTTOMLEFT", -6, -18);
+restoreDefaultsButton:SetPoint("TOPLEFT", delayEditBox, "BOTTOMLEFT", -6, -18);
 restoreDefaultsButton:SetText("Restore Defaults");
 restoreDefaultsButton:SetScript("OnClick", function()
 	for setting, default in pairs(defaultMessages) do

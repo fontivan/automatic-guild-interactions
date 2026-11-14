@@ -4,6 +4,7 @@
 
 local sentMessages = {}
 local frames = {}
+local fontStrings = {}
 local registeredCategory
 local guildMembers = {}
 local currentTime = 100
@@ -65,7 +66,8 @@ end
 local function CreateWidget()
 	local widget = { scripts = {} }
 
-	function widget:SetPoint()
+	function widget:SetPoint(...)
+		self.point = { ... }
 	end
 
 	function widget:SetText(text)
@@ -123,7 +125,9 @@ local function CreateWidget()
 	end
 
 	function widget:CreateFontString()
-		return CreateWidget()
+		local fontString = CreateWidget()
+		table.insert(fontStrings, fontString)
+		return fontString
 	end
 
 	return widget
@@ -187,11 +191,52 @@ assert(#editBoxes == 6, "expected four message fields and two timing fields")
 assert(#featureButtons == 4, "expected one checkbox for each feature")
 assert(restoreDefaultsButton ~= nil, "restore-defaults button was not created")
 assert(eventFrame ~= nil, "event frame was not created")
-assert(editBoxes[1].text == "saved welcome", "welcome-back field was not initialized")
-assert(editBoxes[2].text == "welcome", "empty welcome field was not initialized with its default")
-assert(editBoxes[3].text == "ding", "blank level-up field was not initialized with its default")
-assert(editBoxes[4].text == "grats", "empty congratulations field was not initialized with its default")
-assert(editBoxes[1].cursorPosition == 0, "welcome-back field did not reset its cursor")
+
+local welcomeBackMessageBox = editBoxes[1]
+local welcomeBackDelayBox = editBoxes[2]
+local welcomeMessageBox = editBoxes[3]
+local levelUpMessageBox = editBoxes[4]
+local congratulationsMessageBox = editBoxes[5]
+local minMessageTimeBox = editBoxes[6]
+
+assert(welcomeBackMessageBox.text == "saved welcome", "welcome-back field was not initialized")
+assert(welcomeMessageBox.text == "welcome", "empty welcome field was not initialized with its default")
+assert(levelUpMessageBox.text == "ding", "blank level-up field was not initialized with its default")
+assert(congratulationsMessageBox.text == "grats", "empty congratulations field was not initialized with its default")
+assert(welcomeBackMessageBox.cursorPosition == 0, "welcome-back field did not reset its cursor")
+
+local function FindFontString(text, anchor)
+	for _, fontString in ipairs(fontStrings) do
+		if fontString.text == text and (anchor == nil or fontString.point[2] == anchor) then
+			return fontString
+		end
+	end
+end
+
+local function assertFeatureGroup(index, headingText, messageBox, previousControl)
+	local heading = FindFontString(headingText)
+	assert(heading ~= nil, "missing feature heading: " .. headingText)
+	assert(featureButtons[index].point[2] == heading, "feature toggle was not grouped under its heading")
+	if previousControl ~= nil then
+		assert(heading.point[2] == previousControl, "feature heading was not placed after the previous group")
+	end
+	local messageLabel = FindFontString("Message", featureButtons[index])
+	assert(messageLabel ~= nil, "feature message label was not grouped under its toggle")
+	assert(messageBox.point[2] == messageLabel, "feature message field was not grouped under its label")
+end
+
+assertFeatureGroup(1, "Welcome-back message", welcomeBackMessageBox)
+assertFeatureGroup(2, "New guild member message", welcomeMessageBox, welcomeBackDelayBox)
+assertFeatureGroup(3, "Level-up message", levelUpMessageBox, welcomeMessageBox)
+assertFeatureGroup(4, "Congratulations message", congratulationsMessageBox, levelUpMessageBox)
+local welcomeBackDelayLabel = FindFontString("Welcome-back message delay (seconds)", welcomeBackMessageBox)
+assert(welcomeBackDelayLabel ~= nil, "welcome-back delay was not grouped with its feature")
+assert(welcomeBackDelayBox.point[2] == welcomeBackDelayLabel, "welcome-back delay field was not grouped under its label")
+local generalHeading = FindFontString("General settings", congratulationsMessageBox)
+assert(generalHeading ~= nil, "general settings were not separated from feature groups")
+local minMessageTimeLabel = FindFontString("Minimum time between messages (seconds)", generalHeading)
+assert(minMessageTimeLabel ~= nil, "minimum message interval was not grouped under general settings")
+assert(minMessageTimeBox.point[2] == minMessageTimeLabel, "minimum message interval field was not grouped under its label")
 
 assert(featureButtons[1].checked, "features should be enabled by default")
 assert(not featureButtons[4].checked, "saved feature setting was not loaded")
@@ -219,40 +264,40 @@ assert(#sentMessages == 0, "disabled congratulations feature sent a message")
 featureButtons[4]:SetChecked(true)
 featureButtons[4].scripts.OnClick(featureButtons[4])
 
-editBoxes[1].scripts.OnEditFocusGained(editBoxes[1])
-editBoxes[1]:SetText("custom welcome")
+welcomeBackMessageBox.scripts.OnEditFocusGained(welcomeBackMessageBox)
+welcomeBackMessageBox:SetText("custom welcome")
 assert(AutomaticGuildInteractionsDB.messages.welcome_back == "custom welcome", "message edit was not saved immediately")
-editBoxes[1].scripts.OnEnterPressed(editBoxes[1])
+welcomeBackMessageBox.scripts.OnEnterPressed(welcomeBackMessageBox)
 assert(AutomaticGuildInteractionsDB.messages.welcome_back == "custom welcome", "message edit was not persisted")
-editBoxes[1].scripts.OnEditFocusGained(editBoxes[1])
-editBoxes[1]:SetText("unsaved message")
-editBoxes[1].scripts.OnEscapePressed(editBoxes[1])
+welcomeBackMessageBox.scripts.OnEditFocusGained(welcomeBackMessageBox)
+welcomeBackMessageBox:SetText("unsaved message")
+welcomeBackMessageBox.scripts.OnEscapePressed(welcomeBackMessageBox)
 assert(AutomaticGuildInteractionsDB.messages.welcome_back == "custom welcome", "escape did not restore the message")
-editBoxes[1]:SetText("")
-assert(editBoxes[1].text == "", "blank message should remain editable until committed")
+welcomeBackMessageBox:SetText("")
+assert(welcomeBackMessageBox.text == "", "blank message should remain editable until committed")
 assert(AutomaticGuildInteractionsDB.messages.welcome_back == "custom welcome", "blank edit was saved prematurely")
-editBoxes[1].scripts.OnEnterPressed(editBoxes[1])
+welcomeBackMessageBox.scripts.OnEnterPressed(welcomeBackMessageBox)
 assert(AutomaticGuildInteractionsDB.messages.welcome_back == "wb", "blank message did not restore its default")
-assert(editBoxes[1].text == "wb", "blank message field did not show its default")
-editBoxes[2]:SetText("")
+assert(welcomeBackMessageBox.text == "wb", "blank message field did not show its default")
+welcomeMessageBox:SetText("")
 assert(AutomaticGuildInteractionsDB.messages.welcome == "welcome", "blank welcome edit was saved prematurely")
-editBoxes[2].scripts.OnEditFocusLost(editBoxes[2])
+welcomeMessageBox.scripts.OnEditFocusLost(welcomeMessageBox)
 assert(AutomaticGuildInteractionsDB.messages.welcome == "welcome", "focus loss did not restore the welcome default")
-assert(editBoxes[2].text == "welcome", "focus loss did not update the welcome field")
+assert(welcomeMessageBox.text == "welcome", "focus loss did not update the welcome field")
 
-editBoxes[5]:SetText("-1")
-editBoxes[5].scripts.OnEnterPressed(editBoxes[5])
+minMessageTimeBox:SetText("-1")
+minMessageTimeBox.scripts.OnEnterPressed(minMessageTimeBox)
 assert(AutomaticGuildInteractionsDB.min_message_time == 22, "invalid rate limit was saved")
-editBoxes[6]:SetText("-1")
-editBoxes[6].scripts.OnEnterPressed(editBoxes[6])
+welcomeBackDelayBox:SetText("-1")
+welcomeBackDelayBox.scripts.OnEnterPressed(welcomeBackDelayBox)
 assert(AutomaticGuildInteractionsDB.welcome_back_delay == 0.5, "invalid welcome-back delay was saved")
-assert(editBoxes[6].text == "0.5", "invalid delay did not restore the saved welcome-back delay")
+assert(welcomeBackDelayBox.text == "0.5", "invalid delay did not restore the saved welcome-back delay")
 
 eventFrame.scripts.OnEvent(eventFrame, "PLAYER_LEVEL_UP")
 assert(#sentMessages == 1, "level-up event did not send a message")
 assert(sentMessages[1].message == "ding" and sentMessages[1].channel == "GUILD", "level-up message behavior changed")
 
-editBoxes[1]:SetText("")
+welcomeBackMessageBox:SetText("")
 restoreDefaultsButton.scripts.OnClick()
 RunNextTimer()
 assert(AutomaticGuildInteractionsDB.messages.welcome_back == "wb", "restore defaults did not reset messages")
@@ -262,11 +307,11 @@ assert(
 	AutomaticGuildInteractionsDB.messages.congratulations == "grats",
 	"restore defaults did not reset congratulations message"
 )
-assert(editBoxes[1].text == "wb", "restore defaults did not update the welcome-back field")
-assert(editBoxes[2].text == "welcome", "restore defaults did not update the welcome field")
-assert(editBoxes[3].text == "ding", "restore defaults did not update the level-up field")
-assert(editBoxes[4].text == "grats", "restore defaults did not update the congratulations field")
-assert(editBoxes[1].cursorPosition == 0, "restore defaults did not reset the welcome-back field cursor")
+assert(welcomeBackMessageBox.text == "wb", "restore defaults did not update the welcome-back field")
+assert(welcomeMessageBox.text == "welcome", "restore defaults did not update the welcome field")
+assert(levelUpMessageBox.text == "ding", "restore defaults did not update the level-up field")
+assert(congratulationsMessageBox.text == "grats", "restore defaults did not update the congratulations field")
+assert(welcomeBackMessageBox.cursorPosition == 0, "restore defaults did not reset the welcome-back field cursor")
 assert(AutomaticGuildInteractionsDB.min_message_time == 10, "restore defaults did not reset rate limit")
 assert(AutomaticGuildInteractionsDB.welcome_back_delay == 1, "restore defaults did not reset welcome-back delay")
 assert(AutomaticGuildInteractionsDB.features.level_up, "restore defaults did not re-enable level-up")
@@ -274,8 +319,8 @@ assert(AutomaticGuildInteractionsDB.features.welcome_back, "restore defaults did
 assert(AutomaticGuildInteractionsDB.features.welcome, "restore defaults did not re-enable new-member welcomes")
 assert(AutomaticGuildInteractionsDB.features.congratulations, "restore defaults did not re-enable congratulations")
 
-editBoxes[6]:SetText("2.5")
-editBoxes[6].scripts.OnEnterPressed(editBoxes[6])
+welcomeBackDelayBox:SetText("2.5")
+welcomeBackDelayBox.scripts.OnEnterPressed(welcomeBackDelayBox)
 assert(AutomaticGuildInteractionsDB.welcome_back_delay == 2.5, "welcome-back delay was not saved")
 
 eventFrame.scripts.OnEvent(eventFrame, "PLAYER_LOGIN")
