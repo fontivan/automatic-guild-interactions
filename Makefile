@@ -5,8 +5,8 @@ LUAROCKS_VERSION ?= 3.13.0
 LUACHECK_VERSION ?= 1.2.0-1
 
 LUA_PREFIX := $(abspath $(TOOLS_DIR)/lua-$(LUA_VERSION))
-LUAROCKS_PREFIX := $(abspath $(TOOLS_DIR)/luarocks-$(LUAROCKS_VERSION))
-LUAROCKS_TREE := $(abspath $(TOOLS_DIR)/rocks)
+LUAROCKS_PREFIX := $(abspath $(TOOLS_DIR)/luarocks-$(LUAROCKS_VERSION)-lua-$(LUA_VERSION))
+LUAROCKS_TREE := $(abspath $(TOOLS_DIR)/rocks-lua-$(LUA_VERSION))
 LUA_SOURCE_DIR := $(TOOLS_DIR)/src/lua-$(LUA_VERSION)
 LUAROCKS_SOURCE_DIR := $(TOOLS_DIR)/src/luarocks-$(LUAROCKS_VERSION)
 LUA_ARCHIVE := $(TOOLS_DIR)/downloads/lua-$(LUA_VERSION).tar.gz
@@ -42,7 +42,8 @@ $(LUAROCKS_ARCHIVE):
 $(LUA_PREFIX)/.installed: $(LUA_ARCHIVE)
 	mkdir -p $(TOOLS_DIR)/src
 	tar -xzf $< -C $(TOOLS_DIR)/src
-	$(MAKE) -C $(LUA_SOURCE_DIR) linux
+	$(MAKE) -C $(LUA_SOURCE_DIR)/src clean
+	$(MAKE) -C $(LUA_SOURCE_DIR)/src all MYCFLAGS="-DLUA_USE_POSIX -DLUA_USE_DLOPEN" MYLIBS="-Wl,-E -ldl"
 	$(MAKE) -C $(LUA_SOURCE_DIR) install INSTALL_TOP=$(LUA_PREFIX)
 	touch $@
 
