@@ -3,6 +3,9 @@ LUA_VERSION := $(shell cat .lua-version)
 LUA_ABI_VERSION := $(word 1,$(subst ., ,$(LUA_VERSION))).$(word 2,$(subst ., ,$(LUA_VERSION)))
 LUAROCKS_VERSION := $(shell cat .luarocks-version)
 LUACHECK_VERSION := $(shell cat .luacheck-version)
+LUA_SHA256 := $(shell cat .lua-sha256)
+LUAROCKS_SHA256 := $(shell cat .luarocks-sha256)
+LUACHECK_SHA256 := $(shell cat .luacheck-sha256)
 
 LUA_PREFIX := $(abspath $(TOOLS_DIR)/lua-$(LUA_VERSION))
 LUAROCKS_PREFIX := $(abspath $(TOOLS_DIR)/luarocks-$(LUAROCKS_VERSION)-lua-$(LUA_VERSION))
@@ -11,6 +14,7 @@ LUA_SOURCE_DIR := $(TOOLS_DIR)/src/lua-$(LUA_VERSION)
 LUAROCKS_SOURCE_DIR := $(TOOLS_DIR)/src/luarocks-$(LUAROCKS_VERSION)
 LUA_ARCHIVE := $(TOOLS_DIR)/downloads/lua-$(LUA_VERSION).tar.gz
 LUAROCKS_ARCHIVE := $(TOOLS_DIR)/downloads/luarocks-$(LUAROCKS_VERSION).tar.gz
+LUACHECK_ROCK := $(TOOLS_DIR)/downloads/luacheck-$(LUACHECK_VERSION).src.rock
 LUAROCKS_BIN := $(LUAROCKS_PREFIX)/bin/luarocks
 LUACHECK_BIN := $(LUAROCKS_TREE)/bin/luacheck
 
@@ -33,13 +37,20 @@ check: syntax lint test diff-check
 
 tools: $(LUACHECK_BIN)
 
-$(LUA_ARCHIVE):
+$(LUA_ARCHIVE): .lua-version .lua-sha256
 	mkdir -p $(@D)
-	curl -fL --retry 3 https://www.lua.org/ftp/lua-$(LUA_VERSION).tar.gz -o $@
+	curl -fL --retry 5 --retry-all-errors --retry-delay 2 https://www.lua.org/ftp/lua-$(LUA_VERSION).tar.gz -o $@.tmp
+	printf '%s  %s\n' '$(LUA_SHA256)' '$@.tmp' | sha256sum --check && mv $@.tmp $@
 
-$(LUAROCKS_ARCHIVE):
+$(LUAROCKS_ARCHIVE): .luarocks-version .luarocks-sha256
 	mkdir -p $(@D)
-	curl -fL --retry 3 https://luarocks.org/releases/luarocks-$(LUAROCKS_VERSION).tar.gz -o $@
+	curl -fL --retry 5 --retry-all-errors --retry-delay 2 https://luarocks.org/releases/luarocks-$(LUAROCKS_VERSION).tar.gz -o $@.tmp
+	printf '%s  %s\n' '$(LUAROCKS_SHA256)' '$@.tmp' | sha256sum --check && mv $@.tmp $@
+
+$(LUACHECK_ROCK): .luacheck-version .luacheck-sha256
+	mkdir -p $(@D)
+	curl -fL --retry 5 --retry-all-errors --retry-delay 2 https://luarocks.org/luacheck-$(LUACHECK_VERSION).src.rock -o $@.tmp
+	printf '%s  %s\n' '$(LUACHECK_SHA256)' '$@.tmp' | sha256sum --check && mv $@.tmp $@
 
 $(LUA_PREFIX)/.installed: $(LUA_ARCHIVE)
 	mkdir -p $(TOOLS_DIR)/src
@@ -57,9 +68,9 @@ $(LUAROCKS_PREFIX)/.installed: $(LUAROCKS_ARCHIVE) $(LUA_PREFIX)/.installed
 	$(MAKE) -C $(LUAROCKS_SOURCE_DIR) install
 	touch $@
 
-$(LUACHECK_BIN): $(LUAROCKS_PREFIX)/.installed
+$(LUACHECK_BIN): $(LUAROCKS_PREFIX)/.installed $(LUACHECK_ROCK)
 	mkdir -p $(LUAROCKS_TREE)
-	$(LUAROCKS_BIN) --lua-dir=$(LUA_PREFIX) --lua-version=$(LUA_ABI_VERSION) --tree=$(LUAROCKS_TREE) install --no-doc luacheck $(LUACHECK_VERSION)
+	$(LUAROCKS_BIN) --lua-dir=$(LUA_PREFIX) --lua-version=$(LUA_ABI_VERSION) --tree=$(LUAROCKS_TREE) install --no-doc $(LUACHECK_ROCK)
 
 syntax test: $(LUA_PREFIX)/.installed
 
