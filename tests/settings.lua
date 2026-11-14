@@ -81,7 +81,9 @@ local function CreateWidget()
 		return self.text
 	end
 
-	function widget:SetSize()
+	function widget:SetSize(width, height)
+		self.width = width
+		self.height = height
 	end
 
 	function widget:SetAutoFocus()
@@ -124,6 +126,10 @@ local function CreateWidget()
 		table.insert(self.events, event)
 	end
 
+	function widget:SetScrollChild(child)
+		self.scrollChild = child
+	end
+
 	function widget:CreateFontString()
 		local fontString = CreateWidget()
 		table.insert(fontStrings, fontString)
@@ -140,8 +146,10 @@ local function RunNextTimer()
 	return timer
 end
 
-function CreateFrame(_, _, _, template)
+function CreateFrame(frameType, _, parent, template)
 	local frame = CreateWidget()
+	frame.frameType = frameType
+	frame.parent = parent
 	frame.template = template
 	table.insert(frames, frame)
 	return frame
@@ -166,8 +174,11 @@ local editBoxes = {}
 local featureButtons = {}
 local restoreDefaultsButton
 local eventFrame
+local scrollFrame
 for _, frame in ipairs(frames) do
-	if frame.template == "InputBoxTemplate" then
+	if frame.template == "UIPanelScrollFrameTemplate" then
+		scrollFrame = frame
+	elseif frame.template == "InputBoxTemplate" then
 		table.insert(editBoxes, frame)
 	elseif frame.template == "UICheckButtonTemplate" then
 		table.insert(featureButtons, frame)
@@ -182,6 +193,10 @@ assert(#editBoxes == 6, "expected four message fields and two timing fields")
 assert(#featureButtons == 4, "expected one checkbox for each feature")
 assert(restoreDefaultsButton ~= nil, "restore-defaults button was not created")
 assert(eventFrame ~= nil, "event frame was not created")
+assert(scrollFrame ~= nil, "options scroll frame was not created")
+assert(scrollFrame.parent == registeredCategory.panel, "scroll frame was not parented to the options panel")
+assert(scrollFrame.scrollChild ~= nil, "options content was not attached to the scroll frame")
+assert(scrollFrame.scrollChild.height == 900, "options content was not tall enough to scroll")
 
 AutomaticGuildInteractionsDB = savedVariables
 eventFrame.scripts.OnEvent(eventFrame, "ADDON_LOADED", "automatic-guild-interactions")
@@ -196,13 +211,16 @@ assert(AutomaticGuildInteractionsDB.min_message_time == 22, "saved rate limit wa
 assert(AutomaticGuildInteractionsDB.welcome_back_delay == 0.5, "saved welcome-back delay was not loaded")
 registeredCategory.panel.scripts.OnShow()
 
-local welcomeBackMessageBox = editBoxes[1]
-local welcomeBackDelayBox = editBoxes[2]
-local welcomeMessageBox = editBoxes[3]
-local levelUpMessageBox = editBoxes[4]
-local congratulationsMessageBox = editBoxes[5]
-local minMessageTimeBox = editBoxes[6]
+local minMessageTimeBox = editBoxes[1]
+local welcomeBackMessageBox = editBoxes[2]
+local welcomeBackDelayBox = editBoxes[3]
+local welcomeMessageBox = editBoxes[4]
+local levelUpMessageBox = editBoxes[5]
+local congratulationsMessageBox = editBoxes[6]
 
+assert(minMessageTimeBox.parent == scrollFrame.scrollChild, "general settings were outside the scroll area")
+assert(welcomeBackMessageBox.parent == scrollFrame.scrollChild, "feature settings were outside the scroll area")
+assert(restoreDefaultsButton.parent == scrollFrame.scrollChild, "restore defaults was outside the scroll area")
 assert(welcomeBackMessageBox.text == "saved welcome", "welcome-back field was not initialized")
 assert(welcomeMessageBox.text == "welcome", "empty welcome field was not initialized with its default")
 assert(levelUpMessageBox.text == "ding", "blank level-up field was not initialized with its default")
@@ -217,10 +235,12 @@ local function FindFontString(text, anchor)
 	end
 end
 
-local function assertFeatureGroup(index, headingText, messageBox, previousControl)
+local function assertFeatureGroup(index, headingText, descriptionText, messageBox, previousControl)
 	local heading = FindFontString(headingText)
 	assert(heading ~= nil, "missing feature heading: " .. headingText)
-	assert(featureButtons[index].point[2] == heading, "feature toggle was not grouped under its heading")
+	local description = FindFontString(descriptionText, heading)
+	assert(description ~= nil, "missing feature description: " .. headingText)
+	assert(featureButtons[index].point[2] == description, "feature toggle was not grouped under its description")
 	if previousControl ~= nil then
 		assert(heading.point[2] == previousControl, "feature heading was not placed after the previous group")
 	end
@@ -229,24 +249,53 @@ local function assertFeatureGroup(index, headingText, messageBox, previousContro
 	assert(messageBox.point[2] == messageLabel, "feature message field was not grouped under its label")
 end
 
-assertFeatureGroup(1, "Welcome-back message", welcomeBackMessageBox)
-assertFeatureGroup(2, "New guild member message", welcomeMessageBox, welcomeBackDelayBox)
-assertFeatureGroup(3, "Level-up message", levelUpMessageBox, welcomeMessageBox)
-assertFeatureGroup(4, "Congratulations message", congratulationsMessageBox, levelUpMessageBox)
+assertFeatureGroup(
+	1,
+	"Welcome-back message",
+	"Send a message when a guild member logs in.",
+	welcomeBackMessageBox,
+	restoreDefaultsButton
+)
+assertFeatureGroup(
+	2,
+	"New guild member message",
+	"Welcome members automatically when they join the guild.",
+	welcomeMessageBox,
+	welcomeBackDelayBox
+)
+assertFeatureGroup(
+	3,
+	"Level-up message",
+	"Announce your level-ups to the guild.",
+	levelUpMessageBox,
+	welcomeMessageBox
+)
+assertFeatureGroup(
+	4,
+	"Congratulations message",
+	"Reply with congratulations when a guild member sends a level-up message.",
+	congratulationsMessageBox,
+	levelUpMessageBox
+)
 local welcomeBackDelayLabel = FindFontString("Welcome-back message delay (seconds)", welcomeBackMessageBox)
 assert(welcomeBackDelayLabel ~= nil, "welcome-back delay was not grouped with its feature")
 assert(
 	welcomeBackDelayBox.point[2] == welcomeBackDelayLabel,
 	"welcome-back delay field was not grouped under its label"
 )
-local generalHeading = FindFontString("General settings", congratulationsMessageBox)
-assert(generalHeading ~= nil, "general settings were not separated from feature groups")
-local minMessageTimeLabel = FindFontString("Minimum time between messages (seconds)", generalHeading)
+local generalHeading = FindFontString("General settings")
+assert(generalHeading ~= nil, "general settings heading was not created")
+assert(generalHeading.point[1] == "TOPLEFT", "general settings were not placed at the top")
+assert(generalHeading.point[2] == 16 and generalHeading.point[3] == -60, "general settings heading position changed")
+local generalDescription = FindFontString("Set shared message timing and restore the add-on defaults.", generalHeading)
+assert(generalDescription ~= nil, "general settings description was not created")
+local minMessageTimeLabel = FindFontString("Minimum time between messages (seconds)", generalDescription)
 assert(minMessageTimeLabel ~= nil, "minimum message interval was not grouped under general settings")
 assert(
 	minMessageTimeBox.point[2] == minMessageTimeLabel,
 	"minimum message interval field was not grouped under its label"
 )
+assert(restoreDefaultsButton.point[2] == minMessageTimeBox, "restore defaults was not grouped with general settings")
 
 assert(featureButtons[1].checked, "features should be enabled by default")
 assert(not featureButtons[4].checked, "saved feature setting was not loaded")
